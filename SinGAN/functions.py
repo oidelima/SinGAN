@@ -196,7 +196,25 @@ def find_valid_eye_location(opt, eye_diam, mask):
                 return loc
         except:
             pass
-                  
+ 
+       
+def pad_mask(mask, input_size):
+    mask_height, mask_width = mask.size()[2], mask.size()[3] 
+    pad_down = input_size[0] - mask_height
+    pad_right = input_size[1] - mask_width
+    p2d = (0, pad_right, 0, pad_down) 
+    mask = torch.nn.functional.pad(mask, p2d, "constant", 0)
+    return mask
+
+def make_input(noise, mask, eye):
+    noise_height, noise_width = noise.size()[2], noise.size()[3] 
+    
+    mask_in = pad_mask(mask, (noise_height, noise_width)).float() # Padding masks to make same size as input 
+    eye_in = pad_mask(eye[:, 0:1, :, :], (noise_height, noise_width)).float()
+    
+    G_input = torch.cat((noise, mask_in, eye_in), dim=1) # concatenating to make input to generator
+    
+    return G_input                 
 
 def preprocess_mask(im, opt):
     # Pads mask to make it square and then resizes
@@ -297,7 +315,7 @@ def create_pyramid(im,pyr_list,opt, mode=None):
     for i in range(0,opt.stop_scale+1,1):
         scale = math.pow(opt.scale_factor,opt.stop_scale-i)
         if mode == "mask":
-            curr_im = imresize_mask(im,scale,opt)   
+            curr_im = imresize_mask(im,scale,opt)  
         else:        
             curr_im = imresize(im,scale,opt)
         pyr_list.append(curr_im)
