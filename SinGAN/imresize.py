@@ -4,6 +4,7 @@ import numpy as np
 from scipy.ndimage import filters, measurements, interpolation
 from skimage import color
 from math import pi
+import cv2
 #from SinGAN.functions import torch2uint8, np2torch
 import torch
 
@@ -45,12 +46,32 @@ def torch2uint8(x):
     x = x.astype(np.uint8)
     return x
 
+def torch2uint8_mask(x):
+    x = x[0,:,:,:]
+    x = x.permute((1,2,0))
+    x = x.cpu().numpy()
+    x = x.astype(np.uint8)
+    return x
+
 
 def imresize(im,scale,opt):
     #s = im.shape
     im = torch2uint8(im)
     im = imresize_in(im, scale_factor=scale)
     im = np2torch(im,opt)
+    #im = im[:, :, 0:int(scale * s[2]), 0:int(scale * s[3])]
+    return im
+
+def imresize_mask(im,scale,opt):
+    
+    im = torch2uint8_mask(im)
+    im = imresize_in(im, scale_factor=scale)
+    im = im.round()
+    im = im[:,:,:,None]
+    im = im.transpose((3, 2, 0, 1))
+    im = torch.from_numpy(im).double()
+    if not (opt.not_cuda):
+        im = move_to_gpu(im)
     #im = im[:, :, 0:int(scale * s[2]), 0:int(scale * s[3])]
     return im
 
@@ -89,6 +110,7 @@ def imresize_in(im, scale_factor=None, output_shape=None, kernel=None, antialias
 
     # Iterate over dimensions to calculate local weights for resizing and resize each time in one direction
     out_im = np.copy(im)
+    
     for dim in sorted_dims:
         # No point doing calculations for scale-factor 1. nothing will happen anyway
         if scale_factor[dim] == 1.0:
@@ -101,6 +123,8 @@ def imresize_in(im, scale_factor=None, output_shape=None, kernel=None, antialias
 
         # Use the affecting position values and the set of weights to calculate the result of resizing along this 1 dim
         out_im = resize_along_dim(out_im, dim, weights, field_of_view)
+
+        
 
     return out_im
 

@@ -6,14 +6,61 @@ import torch.optim as optim
 import torch.utils.data
 import math
 import matplotlib.pyplot as plt
+import numpy as np
+import random
 from SinGAN.imresize import imresize
 
-def train(opt,Gs,Zs,reals,NoiseAmp):
-    real_ = functions.read_image(opt)
+def train(opt,Gs,Zs,reals,masks, eyes, NoiseAmp):
+    real_ = functions.read_image(opt)  
+    mask_ = functions.read_mask(opt)
+    eye_ = functions.generate_eye_mask(opt, mask_)
+    eye_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+    
+    
     in_s = 0
     scale_num = 0
     real = imresize(real_,opt.scale1,opt)
-    reals = functions.creat_reals_pyramid(real,reals,opt)
+    reals = functions.create_pyramid(real,reals, opt)
+    masks = functions.create_pyramid(mask_,masks,opt, mode = "mask")
+    eyes = functions.create_pyramid(eye_,eyes,opt, mode = "mask")
+    
+
+    
+    #test
+    # eye_color = (187, 238, 252)
+    # from skimage import io as img
+    # x = img.imread('Output\RandomSamples\coral_1\gen_start_scale=0\\10.png')
+    
+    # x = functions.np2torch(x,opt)
+    # fake_background = x[:,0:3,:,:]
+    # eye_ = eyes[-1]
+    # mask_ = masks[-1]
+    # real_ = reals[-1]
+    # eye_colored = eye_.clone().double()
+    # eye_colored[:, 0, :, :] *= (eye_color[0]/255)
+    # eye_colored[:, 1, :, :] *= (eye_color[1]/255)
+    # eye_colored[:, 2, :, :] *= (eye_color[2]/255)
+    # im_height, im_width = fake_background.size()[2], fake_background.size()[3] 
+    # mask_height, mask_width = mask_.size()[2], mask_.size()[3] 
+    # h_loc = np.random.randint(im_height - mask_height)
+    # w_loc = np.random.randint(im_width - mask_width)
+    # fake = real_.clone()
+    # # overaying shape and eye mask on image
+    # fake[:,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = (fake_background[:,:,0:mask_height ,0:mask_width] *mask_\
+    #                                                                 + real_[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask_-1))*abs(eye_-1)\
+    #                                                                 + eye_colored
+                                                                    
+    # plt.imsave('SinGAN\\random_samples_test\coral_1\\9.png' , functions.convert_image_np(fake.detach()), vmin=0, vmax=1)
+    # # plt.imshow(mask_.squeeze().detach().cpu(), cmap='gray')
+    # # plt.show()
+    # # plt.imshow(fake_background.squeeze().permute(1,2,0).detach().cpu())
+    # # plt.show()
+    # # plt.imshow(fake.squeeze().permute(1,2,0).detach().cpu())
+    # # plt.show()
+    # # plt.imshow(real_.squeeze().permute(1,2,0).detach().cpu())
+    # # plt.show()
+    # dsjk
+     
     nfc_prev = 0
 
     while scale_num<opt.stop_scale+1:
@@ -36,7 +83,7 @@ def train(opt,Gs,Zs,reals,NoiseAmp):
             G_curr.load_state_dict(torch.load('%s/%d/netG.pth' % (opt.out_,scale_num-1)))
             D_curr.load_state_dict(torch.load('%s/%d/netD.pth' % (opt.out_,scale_num-1)))
 
-        z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals,Gs,Zs,in_s,NoiseAmp,opt)
+        z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals, masks, eyes, eye_color, Gs,Zs,in_s,NoiseAmp,opt)
 
         G_curr = functions.reset_grads(G_curr,False)
         G_curr.eval()
@@ -59,11 +106,14 @@ def train(opt,Gs,Zs,reals,NoiseAmp):
 
 
 
-def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
+def train_single_scale(netD,netG,reals, masks,eyes, eye_color, Gs,Zs,in_s,NoiseAmp,opt,centers=None):
 
     real = reals[len(Gs)]
-    opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer)
-    opt.nzy = real.shape[3]#+(opt.ker_size-1)*(opt.num_layer)
+    mask = masks[len(Gs)]
+    eye = eyes[len(Gs)]
+
+    opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer) width 
+    opt.nzy = real.shape[3]#+(opt.ker_size-1)*(opt.num_layer) height
     opt.receptive_field = opt.ker_size + ((opt.ker_size-1)*(opt.num_layer-1))*opt.stride
     pad_noise = int(((opt.ker_size - 1) * opt.num_layer) / 2)
     pad_image = int(((opt.ker_size - 1) * opt.num_layer) / 2)
@@ -152,7 +202,52 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
             else:
                 noise = opt.noise_amp*noise_+prev
 
-            fake = netG(noise.detach(),prev)
+            fake_background = netG(noise.detach(),prev)
+            
+            # Cropping mask shape from generated image and putting on top of real image at random location
+
+            im_height, im_width = fake_background.size()[2], fake_background.size()[3] 
+            mask_height, mask_width = mask.size()[2], mask.size()[3] 
+            h_loc = np.random.randint(im_height - mask_height)
+            w_loc = np.random.randint(im_width - mask_width)
+            fake = real.clone()
+            
+            #coloring eye
+            eye_colored = eye.clone()
+            eye_colored[:, 0, :, :] *= (eye_color[0]/255)
+            eye_colored[:, 1, :, :] *= (eye_color[1]/255)
+            eye_colored[:, 2, :, :] *= (eye_color[2]/255)
+
+    
+            # overaying shape and eye mask on image
+            fake[:,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = (fake_background[:,:,0:mask_height ,0:mask_width] *mask\
+                                                                            + real[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1))*abs(eye-1)\
+                                                                            + eye_colored
+                                                                                                                                                                                     
+            
+            fake_ind = torch.zeros((1, 3, im_height, im_width))
+            eye_ind = torch.zeros((1, 3, im_height, im_width)) 
+            fake_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[:,:,0:mask_height ,0:mask_width] *mask
+            eye_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye_colored
+            
+            # plt.imshow(real.squeeze().detach().cpu(), cmap="gray")
+            # plt.show()
+            # plt.imshow(real.squeeze().permute(1,2,0).detach().cpu())
+            # plt.show()
+            # plt.imshow(fake.squeeze().permute(1,2,0).detach().cpu())
+            # plt.show()
+            # ds
+            # plt.imshow(mask.squeeze().detach().cpu(), cmap="gray")
+            # plt.show()
+            # plt.imshow(fake_background.squeeze().permute(1,2,0).detach().cpu())
+            # plt.show()
+            # plt.imshow(eye_ind.squeeze().permute(1,2,0).detach().cpu())
+            # plt.show()
+            # plt.imshow(fake_ind.squeeze().permute(1,2,0).detach().cpu())
+            # plt.show()
+            # plt.imshow(fake.squeeze().permute(1,2,0).detach().cpu())
+            # plt.show()
+
             output = netD(fake.detach())
             errD_fake = output.mean()
             errD_fake.backward(retain_graph=True)
@@ -201,6 +296,8 @@ def train_single_scale(netD,netG,reals,Gs,Zs,in_s,NoiseAmp,opt,centers=None):
 
         if epoch % 500 == 0 or epoch == (opt.niter-1):
             plt.imsave('%s/fake_sample.png' %  (opt.outf), functions.convert_image_np(fake.detach()), vmin=0, vmax=1)
+            plt.imsave('%s/fake_indicator.png' %  (opt.outf), functions.convert_image_np(fake_ind.detach()), vmin=0, vmax=1)
+            plt.imsave('%s/eye_indicator.png' %  (opt.outf), functions.convert_image_np(eye_ind.detach()), vmin=0, vmax=1)
             plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(Z_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
             #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
             #plt.imsave('%s/D_real.png'   % (opt.outf), functions.convert_image_np(D_real_map))

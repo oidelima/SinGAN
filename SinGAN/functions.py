@@ -9,10 +9,13 @@ from skimage import io as img
 from skimage import color, morphology, filters
 #from skimage import morphology
 #from skimage import filters
-from SinGAN.imresize import imresize
+from SinGAN.imresize import imresize, imresize_mask
 import os
 import random
 from sklearn.cluster import KMeans
+import scipy
+from PIL import Image, ImageDraw
+
 
 
 # custom weights initialization called on netG and netD
@@ -152,6 +155,75 @@ def read_image(opt):
     x = x[:,0:3,:,:]
     return x
 
+def read_mask(opt):
+    #x = img.imread('%s/%s' % (opt.mask_dir,opt.mask_name))
+    x = Image.open('%s/%s' % (opt.mask_dir,opt.mask_name))
+    x = np.array(x)
+    x = preprocess_mask(x, opt) 
+    x = x[:,:,None,None]
+    x = x.transpose((3, 2, 0, 1))
+    x = torch.from_numpy(x)
+    if not(opt.not_cuda):
+        x = move_to_gpu(x)
+    #x = x.type(torch.cuda.FloatTensor) if not(opt.not_cuda) else x.type(torch.FloatTensor)
+    #x = x.type(torch.FloatTensor)
+    return x
+
+def generate_eye_mask(opt, mask):
+    
+    im_height, im_width = mask.size()[2], mask.size()[3]
+
+    # Make eye constraint mask
+    eye_diam = opt.eye_diam
+    eye = Image.new('RGB', (opt.patch_size, opt.patch_size))
+    draw = ImageDraw.Draw(eye)
+    eye_loc = find_valid_eye_location(opt, eye_diam, mask)
+    draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
+    eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
+    eye[eye>0] = 1 
+    if not(opt.not_cuda):
+        eye = move_to_gpu(eye)
+        eye = eye.unsqueeze(0)
+    return eye
+
+        
+def find_valid_eye_location(opt, eye_diam, mask):
+
+    while True:
+        try:
+            loc = (random.randint(0, opt.patch_size), random.randint(0, opt.patch_size))   
+            if mask[:, :, loc[0], loc[1]] == 1 and mask[:, :, loc[0] + eye_diam, loc[1] + eye_diam] == 1:
+                return loc
+        except:
+            pass
+                  
+
+def preprocess_mask(im, opt):
+    # Pads mask to make it square and then resizes
+    h = im.shape[0]
+    w = im.shape[1]
+
+    if h > w:
+        diff = h - w
+        if diff%2 == 0:
+            new_img = np.pad(im, ((0, 0), (diff // 2, diff // 2)), mode='constant')
+        else:
+            new_img = np.pad(im, ((0, 0), (diff // 2, diff // 2 + 1)), mode='constant')
+    elif w > h:
+        diff = w - h
+        if diff%2 == 0:
+            new_img = np.pad(im, ((diff // 2, diff // 2), (0, 0)), mode='constant')
+        else:
+            new_img = np.pad(im, ((diff // 2, diff // 2 + 1), (0, 0)), mode='constant')
+    else: # already square
+        new_img = im
+    # fill in small holes
+    new_img = scipy.ndimage.morphology.binary_dilation(new_img, iterations=4).astype(np.uint8)
+    pil_im = Image.fromarray(new_img * 255.0)
+    pil_im.thumbnail((opt.patch_size, opt.patch_size), Image.NEAREST)
+    return np.array(pil_im) / 255.0
+
+    
 def read_image_dir(dir,opt):
     x = img.imread('%s' % (dir))
     x = np2torch(x,opt)
@@ -161,7 +233,7 @@ def read_image_dir(dir,opt):
 def np2torch(x,opt):
     if opt.nc_im == 3:
         x = x[:,:,:,None]
-        x = x.transpose((3, 2, 0, 1))/255
+        x = x.transpose((3, 2, 0, 1))/255   
     else:
         x = color.rgb2gray(x)
         x = x[:,:,None,None]
@@ -172,6 +244,7 @@ def np2torch(x,opt):
     x = x.type(torch.cuda.FloatTensor) if not(opt.not_cuda) else x.type(torch.FloatTensor)
     #x = x.type(torch.FloatTensor)
     x = norm(x)
+    
     return x
 
 def torch2uint8(x):
@@ -218,13 +291,17 @@ def adjust_scales2image_SR(real_,opt):
     opt.stop_scale = opt.num_scales - scale2stop
     return real
 
-def creat_reals_pyramid(real,reals,opt):
-    real = real[:,0:3,:,:]
+
+def create_pyramid(im,pyr_list,opt, mode=None):
+
     for i in range(0,opt.stop_scale+1,1):
         scale = math.pow(opt.scale_factor,opt.stop_scale-i)
-        curr_real = imresize(real,scale,opt)
-        reals.append(curr_real)
-    return reals
+        if mode == "mask":
+            curr_im = imresize_mask(im,scale,opt)   
+        else:        
+            curr_im = imresize(im,scale,opt)
+        pyr_list.append(curr_im)
+    return pyr_list
 
 
 def load_trained_pyramid(opt, mode_='train'):
