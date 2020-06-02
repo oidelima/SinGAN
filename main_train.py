@@ -11,7 +11,9 @@ if __name__ == '__main__':
     parser.add_argument('--mask_dir', help='input mask dir', default='Input/masks')
     parser.add_argument('--mask_name', help='input mask name', required=True)
     parser.add_argument('--patch_size', help='input mask name', default=96)
+    parser.add_argument('--crop_size', help='input mask name', default=250)
     parser.add_argument('--eye_diam', help='input eye diameter', default=7)
+    parser.add_argument('--eye_color', help='input eye color', default=(255, 255, 255))
     parser.add_argument('--mode', help='task to be done', default='train')
     opt = parser.parse_args()
     opt = functions.post_config(opt)
@@ -23,7 +25,6 @@ if __name__ == '__main__':
     NoiseAmp = []
     dir2save = functions.generate_dir2save(opt)
     
-   
 
     # if (os.path.exists(dir2save)):
     #     print('trained model already exist')
@@ -33,6 +34,7 @@ if __name__ == '__main__':
     except OSError:
         pass
     real = functions.read_image(opt)
-    functions.adjust_scales2image(real, opt)
+    crop = functions.random_crop(real, opt.crop_size) 
+    functions.adjust_scales2image(crop, opt)
     train(opt, Gs, Zs, reals, masks, eyes, NoiseAmp)
-    SinGAN_generate(Gs,Zs,reals, NoiseAmp,opt)
+    SinGAN_generate(Gs,Zs,reals,masks, eyes, NoiseAmp,opt)

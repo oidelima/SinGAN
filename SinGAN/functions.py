@@ -155,6 +155,18 @@ def read_image(opt):
     x = x[:,0:3,:,:]
     return x
 
+def random_crop(real, crop_size):
+    height = real.shape[2]
+    width = real.shape[3]
+                
+    h_idx = np.random.randint(height - crop_size, size=1)
+    w_idx = np.random.randint(width - crop_size, size=1)
+    h_idx_end = h_idx + crop_size
+    w_idx_end = w_idx + crop_size
+    
+    crop = real[:,:,h_idx[0]:h_idx_end[0],w_idx[0]:w_idx_end[0]]
+    return crop
+
 def read_mask(opt):
     #x = img.imread('%s/%s' % (opt.mask_dir,opt.mask_name))
     x = Image.open('%s/%s' % (opt.mask_dir,opt.mask_name))
@@ -196,8 +208,43 @@ def find_valid_eye_location(opt, eye_diam, mask):
                 return loc
         except:
             pass
- 
+
+def gen_fake(real, fake_background, mask, eye, eye_color):
        
+    # Cropping mask shape from generated image and putting on top of real image at random location
+    im_height, im_width = real.size()[2], real.size()[3] 
+    mask_height, mask_width = mask.size()[2], mask.size()[3] 
+    h_loc = np.random.randint(im_height - mask_height)
+    w_loc = np.random.randint(im_width - mask_width)
+    fake = real.clone()
+    
+    #coloring eye
+    eye_colored = eye.clone()
+    eye_colored[:, 0, :, :] *= (eye_color[0]/255)
+    eye_colored[:, 1, :, :] *= (eye_color[1]/255)
+    eye_colored[:, 2, :, :] *= (eye_color[2]/255)
+
+
+    # overaying shape and eye mask on image
+    fake[:,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = (fake_background[:,:,0:mask_height ,0:mask_width] *mask\
+                                                                    + real[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1))*abs(eye-1)\
+                                                                    + eye_colored
+
+    fake_ind = torch.zeros((1, 3, im_height, im_width))
+    eye_ind = torch.zeros((1, 3, im_height, im_width)) 
+    fake_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[:,:,0:mask_height ,0:mask_width] *mask
+    eye_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye_colored
+                                                                    
+    return fake, fake_ind, eye_ind
+ 
+def get_eye_color(real):
+    height, width = real.size()[2], real.size()[3]
+    eye_color_loc = (random.randint(0, height-1), random.randint(0, width-1))
+    eye_color =  real[0, :, eye_color_loc[0], eye_color_loc[1]]
+    eye_color = 255*denorm(eye_color)
+    return eye_color
+    
+                                                                                
 def pad_mask(mask, input_size):
     mask_height, mask_width = mask.size()[2], mask.size()[3] 
     pad_down = input_size[0] - mask_height
