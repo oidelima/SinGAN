@@ -22,6 +22,7 @@ if __name__ == '__main__':
     reals = []
     masks = []
     eyes = []
+    crops = []
     NoiseAmp = []
     dir2save = functions.generate_dir2save(opt)
     
@@ -34,7 +35,7 @@ if __name__ == '__main__':
     except OSError:
         pass
     real = functions.read_image(opt)
-    crop = functions.random_crop(real, opt.crop_size) 
+    crop, _ , _ = functions.random_crop(real, opt.crop_size) 
     functions.adjust_scales2image(crop, opt)
-    train(opt, Gs, Zs, reals, masks, eyes, NoiseAmp)
-    SinGAN_generate(Gs,Zs,reals,masks, eyes, NoiseAmp,opt)
+    train(opt, Gs, Zs, reals, crops, masks, eyes, NoiseAmp)
+    SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt)

@@ -165,7 +165,7 @@ def random_crop(real, crop_size):
     w_idx_end = w_idx + crop_size
     
     crop = real[:,:,h_idx[0]:h_idx_end[0],w_idx[0]:w_idx_end[0]]
-    return crop
+    return crop, int(h_idx), int(w_idx)
 
 def read_mask(opt):
     #x = img.imread('%s/%s' % (opt.mask_dir,opt.mask_name))

@@ -10,7 +10,7 @@ import numpy as np
 import random
 from SinGAN.imresize import imresize
 
-def train(opt,Gs,Zs,reals,masks, eyes, NoiseAmp): 
+def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp): 
     real_ = functions.read_image(opt)
     real = imresize(real_,opt.scale1,opt)
     mask_ = functions.read_mask(opt)
@@ -25,11 +25,11 @@ def train(opt,Gs,Zs,reals,masks, eyes, NoiseAmp):
     scale_num = 0
     
     reals = functions.create_pyramid(real,reals, opt)
-    masks = functions.create_pyramid(mask_,masks,opt)
+    masks = functions.create_pyramid(mask_,masks,opt, mode = "mask")
     eyes = functions.create_pyramid(eye_,eyes,opt, mode = "mask")
-    
+  
+  
     # Shortcut to get sizes of corresponding crops for each scale
-    crops = []
     crops =  functions.create_pyramid(crop_,crops, opt, mode="mask")
 
 
@@ -88,7 +88,7 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
 
     real_fullsize = reals[len(Gs)]
     crop_size =  crops[len(Gs)].size()[2]
-    real = functions.random_crop(real_fullsize, crop_size)  
+    real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  
     mask = masks[len(Gs)]
     eye = eyes[len(Gs)]
     
@@ -227,6 +227,7 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                 rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),real)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
+                ds
             else:
                 Z_opt = z_opt
                 rec_loss = 0
@@ -242,9 +243,11 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
             print('scale %d:[%d/%d]' % (len(Gs), epoch, opt.niter))
 
         if epoch % 500 == 0 or epoch == (opt.niter-1):
-            plt.imsave('%s/fake_sample.png' %  (opt.outf), functions.convert_image_np(fake.detach()), vmin=0, vmax=1)
-            plt.imsave('%s/fake_indicator.png' %  (opt.outf), functions.convert_image_np(fake_ind.detach()), vmin=0, vmax=1)
-            plt.imsave('%s/eye_indicator.png' %  (opt.outf), functions.convert_image_np(eye_ind.detach()), vmin=0, vmax=1)
+            plt.imsave('%s/fake_sample.png' %  (opt.outf), functions.convert_image_np(fake.detach()))
+            plt.imsave('%s/fake_indicator.png' %  (opt.outf), functions.convert_image_np(fake_ind.detach()))
+            plt.imsave('%s/eye_indicator.png' %  (opt.outf), functions.convert_image_np(eye_ind.detach()))
+            plt.imsave('%s/background.png' %  (opt.outf), functions.convert_image_np(fake_background.detach()))
+            
             #plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(input_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
             #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
             #plt.imsave('%s/D_real.png'   % (opt.outf), functions.convert_image_np(D_real_map))
@@ -259,7 +262,7 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
         schedulerD.step()
         schedulerG.step()
         
-        real = functions.random_crop(real_fullsize, crop_size)  #randomly find crop in image
+        real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  #randomly find crop in image
 
     functions.save_networks(netG,netD,z_opt,opt)
     return z_opt,in_s,netG 

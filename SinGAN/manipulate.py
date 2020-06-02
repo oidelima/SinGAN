@@ -86,10 +86,10 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     imageio.mimsave('%s/start_scale=%d/alpha=%f_beta=%f.gif' % (dir2save,start_scale,alpha,beta),images_cur,fps=fps)
     del images_cur
 
-def SinGAN_generate(Gs,Zs,reals, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=50):
+def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=50):
     #if torch.is_tensor(in_s) == False:
     if in_s is None:
-        in_s = torch.full(reals[0].shape, 0, device=opt.device)
+        in_s = torch.full(crops[0].shape, 0, device=opt.device)
     images_cur = []
     for G,Z_opt,noise_amp in zip(Gs,Zs,NoiseAmp):
         pad1 = ((opt.ker_size-1)*opt.num_layer)/2
@@ -129,9 +129,18 @@ def SinGAN_generate(Gs,Zs,reals, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,s
                 z_curr = Z_opt
 
             z_in = noise_amp*(z_curr)+I_prev
+
             G_input = SinGAN.functions.make_input(z_in, masks[n], eyes[n])
             fake_background = G(G_input.detach(),I_prev) 
-            I_curr, fake_ind, eye_ind = SinGAN.functions.gen_fake(reals[n], fake_background, masks[n], eyes[n], opt.eye_color)
+            
+
+            crop_size =  crops[n].size()[2]
+            crop, h_idx, w_idx = functions.random_crop(reals[n], crop_size)
+            I_curr, fake_ind, eye_ind = SinGAN.functions.gen_fake(crop, fake_background, masks[n], eyes[n], opt.eye_color)
+            full_fake = reals[n].clone()
+            full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr
+            full_mask = torch.zeros_like(full_fake)
+            full_mask[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = fake_ind
             
             
 
@@ -141,17 +150,25 @@ def SinGAN_generate(Gs,Zs,reals, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,s
                 else:
                     dir2save = functions.generate_dir2save(opt)
                 try:
-                    os.makedirs(dir2save)
+                    os.makedirs(dir2save + "/fake")
+                    os.makedirs(dir2save + "/background")
+                    os.makedirs(dir2save + "/mask")
+                    os.makedirs(dir2save + "/eye")
+                    os.makedirs(dir2save + "/full_fake")
+                    os.makedirs(dir2save + "/full_mask")
+                    
                 except OSError:
                     pass
                 if (opt.mode != "harmonization") & (opt.mode != "editing") & (opt.mode != "SR") & (opt.mode != "paint2image"):
-                    plt.imsave('%s/%d.png' % (dir2save, i), functions.convert_image_np(I_curr.detach()), vmin=0,vmax=1)
-                    plt.imsave('%s/%s.png' % (dir2save, str(i)+"_background"), functions.convert_image_np(fake_background.detach()), vmin=0,vmax=1)
-                    plt.imsave('%s/%s.png' % (dir2save, str(i)+"_mask"), functions.convert_image_np(fake_ind.detach()), vmin=0,vmax=1)
-                    plt.imsave('%s/%s.png' % (dir2save, str(i)+"_eye"), functions.convert_image_np(eye_ind.detach()), vmin=0,vmax=1)
+                    plt.imsave('%s/%s/%d.png' % (dir2save, "fake", i), functions.convert_image_np(I_curr.detach()), vmin=0,vmax=1)
+                    plt.imsave('%s/%s/%d.png' % (dir2save, "background", i), functions.convert_image_np(fake_background.detach()), vmin=0,vmax=1)
+                    plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind.detach()), vmin=0,vmax=1)
+                    plt.imsave('%s/%s/%d.png' % (dir2save, "eye", i), functions.convert_image_np(eye_ind.detach()), vmin=0,vmax=1)
+                    plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()), vmin=0,vmax=1)
+                    plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()), vmin=0,vmax=1)
                     #plt.imsave('%s/%d_%d.png' % (dir2save,i,n),functions.convert_image_np(I_curr.detach()), vmin=0, vmax=1)
                     #plt.imsave('%s/in_s.png' % (dir2save), functions.convert_image_np(in_s), vmin=0,vmax=1)
-            images_cur.append(I_curr)
+            images_cur.append(fake_background)
         n+=1
     return I_curr.detach()
 
