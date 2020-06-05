@@ -5,6 +5,7 @@ import argparse
 import os
 import random
 from SinGAN.imresize import imresize
+import SinGAN.functions as functions
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
@@ -86,7 +87,43 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     imageio.mimsave('%s/start_scale=%d/alpha=%f_beta=%f.gif' % (dir2save,start_scale,alpha,beta),images_cur,fps=fps)
     del images_cur
 
-def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=50):
+def random_crop_generate(real, mask, eye, opt, num_samples = 20):
+    
+    for i in range(num_samples):
+        fake_background, _, _ = functions.random_crop(real, opt.crop_size)
+        crop, h_idx, w_idx = functions.random_crop(real, opt.crop_size)  
+         
+        I_curr, fake_ind, eye_ind = functions.gen_fake(crop, fake_background, mask, eye, opt.eye_color, opt, border = True)
+        
+        
+        full_fake = real.clone()
+        full_fake[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = I_curr
+        full_mask = torch.zeros_like(full_fake)
+        full_mask[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = fake_ind
+        
+        dir2save = '%s/RandomSamples/%s/random_crop' % (opt.out, opt.input_name[:-4])
+        try:
+            os.makedirs(dir2save + "/fake")
+            os.makedirs(dir2save + "/background")
+            os.makedirs(dir2save + "/mask")
+            os.makedirs(dir2save + "/eye")
+            os.makedirs(dir2save + "/full_fake")
+            os.makedirs(dir2save + "/full_mask")
+            
+        except OSError:
+            pass
+        if (opt.mode != "harmonization") & (opt.mode != "editing") & (opt.mode != "SR") & (opt.mode != "paint2image"):
+            plt.imsave('%s/%s/%d.png' % (dir2save, "fake", i), functions.convert_image_np(I_curr.detach()), vmin=0,vmax=1)
+            plt.imsave('%s/%s/%d.png' % (dir2save, "background", i), functions.convert_image_np(fake_background.detach()), vmin=0,vmax=1)
+            plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind.detach()), vmin=0,vmax=1)
+            plt.imsave('%s/%s/%d.png' % (dir2save, "eye", i), functions.convert_image_np(eye_ind.detach()), vmin=0,vmax=1)
+            plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()), vmin=0,vmax=1)
+            plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()), vmin=0,vmax=1)
+            #plt.imsave('%s/%d_%d.png' % (dir2save,i,n),functions.convert_image_np(I_curr.detach()), vmin=0, vmax=1)
+            #plt.imsave('%s/in_s.png' % (dir2save), functions.convert_image_np(in_s), vmin=0,vmax=1)
+
+
+def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=20):
     #if torch.is_tensor(in_s) == False:
     if in_s is None:
         in_s = torch.full(crops[0].shape, 0, device=opt.device)
@@ -136,7 +173,9 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
 
             crop_size =  crops[n].size()[2]
             crop, h_idx, w_idx = functions.random_crop(reals[n], crop_size)
-            I_curr, fake_ind, eye_ind = SinGAN.functions.gen_fake(crop, fake_background, masks[n], eyes[n], opt.eye_color)
+            border = False
+            if n == len(reals)-1: border = True
+            I_curr, fake_ind, eye_ind = functions.gen_fake(crop, fake_background, masks[n], eyes[n], opt.eye_color, opt, border)
             full_fake = reals[n].clone()
             full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr
             full_mask = torch.zeros_like(full_fake)
@@ -146,7 +185,7 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
 
             if n == len(reals)-1:
                 if opt.mode == 'train':
-                    dir2save = '%s/RandomSamples/%s/gen_start_scale=%d' % (opt.out, opt.input_name[:-4], gen_start_scale)
+                    dir2save = '%s/RandomSamples/%s/SinGAN' % (opt.out, opt.input_name[:-4])
                 else:
                     dir2save = functions.generate_dir2save(opt)
                 try:

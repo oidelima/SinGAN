@@ -187,7 +187,7 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
             fake_background = netG(G_input.detach(),prev)
             
             # Cropping mask shape from generated image and putting on top of real image at random location
-            fake, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask, eye, eye_color)             
+            fake, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask, eye, eye_color, opt)            
                                                                                                                                                                                     
             # plt.imshow(real.squeeze().detach().cpu(), cmap="gray")
             # plt.show()
@@ -227,7 +227,6 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                 rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),real)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
-                ds
             else:
                 Z_opt = z_opt
                 rec_loss = 0

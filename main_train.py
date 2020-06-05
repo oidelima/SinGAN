@@ -14,6 +14,8 @@ if __name__ == '__main__':
     parser.add_argument('--crop_size', help='input mask name', default=250)
     parser.add_argument('--eye_diam', help='input eye diameter', default=7)
     parser.add_argument('--eye_color', help='input eye color', default=(255, 255, 255))
+    parser.add_argument('--border_width', help='size of border shade', default=4)
+    parser.add_argument('--shade_amt', help='amount of shading put on borders', default=0.5)
     parser.add_argument('--mode', help='task to be done', default='train')
     opt = parser.parse_args()
     opt = functions.post_config(opt)
@@ -39,3 +41,4 @@ if __name__ == '__main__':
     functions.adjust_scales2image(crop, opt)
     train(opt, Gs, Zs, reals, crops, masks, eyes, NoiseAmp)
     SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt)
+    random_crop_generate(reals[-1], masks[-1], eyes[-1], opt)
