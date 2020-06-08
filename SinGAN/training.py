@@ -227,7 +227,6 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                 rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),real)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
-                ds
             else:
                 Z_opt = z_opt
                 rec_loss = 0
