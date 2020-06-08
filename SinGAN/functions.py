@@ -209,7 +209,7 @@ def find_valid_eye_location(opt, eye_diam, mask):
         except:
             pass
 
-def gen_fake(real, fake_background, mask, eye, eye_color):
+def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False):
        
     # Cropping mask shape from generated image and putting on top of real image at random location
     im_height, im_width = real.size()[2], real.size()[3] 
@@ -218,23 +218,41 @@ def gen_fake(real, fake_background, mask, eye, eye_color):
     w_loc = np.random.randint(im_width - mask_width)
     fake = real.clone()
     
+    fake_ind = torch.zeros((1, 3, im_height, im_width))
+    eye_ind = torch.zeros((1, 3, im_height, im_width)) 
+    
+    
     #coloring eye
     eye_colored = eye.clone()
     eye_colored[:, 0, :, :] *= (eye_color[0]/255)
     eye_colored[:, 1, :, :] *= (eye_color[1]/255)
     eye_colored[:, 2, :, :] *= (eye_color[2]/255)
+    
+    
+    
+    # Shading border of mask
+    shade = 0
+    
+    if border:
+        border_width = opt.border_width
+        shade_amt = opt.shade_amt
+        shrunken_mask = move_to_gpu(torch.from_numpy(scipy.ndimage.morphology.binary_erosion(mask[0, 0, :, :].cpu(), iterations=border_width)).type(torch.float64))
+        shrunken_mask = shrunken_mask[None, None, :, :]
+        border_mask = mask - shrunken_mask
+        shade = (border_mask * shade_amt)
 
+    
 
     # overaying shape and eye mask on image
-    fake[:,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = (fake_background[:,:,0:mask_height ,0:mask_width] *mask\
+    fake[:,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = (fake_background[:,:,0:mask_height ,0:mask_width] *(mask)\
                                                                     + real[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1))*abs(eye-1)\
-                                                                    + eye_colored
+                                                                    + eye_colored - shade
+    
 
-    fake_ind = torch.zeros((1, 3, im_height, im_width))
-    eye_ind = torch.zeros((1, 3, im_height, im_width)) 
-    fake_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[:,:,0:mask_height ,0:mask_width] *mask
+    
+    fake_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[:,:,0:mask_height ,0:mask_width] *(mask) - shade
     eye_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye_colored
-                                                                    
+                                           
     return fake, fake_ind, eye_ind
  
 def get_eye_color(real):
