@@ -88,7 +88,8 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
 
     real_fullsize = reals[len(Gs)]
     crop_size =  crops[len(Gs)].size()[2]
-    real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  
+    #real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)
+    real = real_fullsize.clone()  
     mask = masks[len(Gs)]
     eye = eyes[len(Gs)]
     
@@ -162,15 +163,15 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                     z_prev = m_image(z_prev)
                     prev = z_prev
                 else:
-                    prev = draw_concat(Gs,Zs,crops, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                    prev = draw_concat(Gs,Zs,reals, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                     prev = m_image(prev)
-                    z_prev = draw_concat(Gs,Zs,crops, masks, eyes, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
+                    z_prev = draw_concat(Gs,Zs,reals, masks, eyes, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
                     criterion = nn.MSELoss()
                     RMSE = torch.sqrt(criterion(real, z_prev))
                     opt.noise_amp = opt.noise_amp_init*RMSE
                     z_prev = m_image(z_prev)
             else:
-                prev = draw_concat(Gs,Zs,crops, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                prev = draw_concat(Gs,Zs,reals, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                 prev = m_image(prev)
 
             if opt.mode == 'paint_train':
@@ -261,7 +262,7 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
         schedulerD.step()
         schedulerG.step()
         
-        real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  #randomly find crop in image
+        #real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  #randomly find crop in image
 
     functions.save_networks(netG,netD,z_opt,opt)
     return z_opt,in_s,netG 
