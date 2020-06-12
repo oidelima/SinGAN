@@ -37,9 +37,9 @@ if __name__ == '__main__':
     except OSError:
         pass
     real = functions.read_image(opt)
-    #crop, _ , _ = functions.random_crop(real, opt.crop_size) 
+    crop, _ , _ = functions.random_crop(real, opt.crop_size) 
     #functions.adjust_scales2image(crop, opt)
-    functions.adjust_scales2image(real, opt)
+    functions.adjust_scales2image(crop, opt)
     train(opt, Gs, Zs, reals, crops, masks, eyes, NoiseAmp)
     SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt)
     random_crop_generate(reals[-1], masks[-1], eyes[-1], opt)
