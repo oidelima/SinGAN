@@ -207,6 +207,7 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
                     # plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()), vmin=0,vmax=1)
                     #plt.imsave('%s/%d_%d.png' % (dir2save,i,n),functions.convert_image_np(I_curr.detach()), vmin=0, vmax=1)
                     #plt.imsave('%s/in_s.png' % (dir2save), functions.convert_image_np(in_s), vmin=0,vmax=1)
+                    
             images_cur.append(fake_background)
         n+=1
     return I_curr.detach()

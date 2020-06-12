@@ -27,6 +27,11 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
     reals = functions.create_pyramid(real,reals, opt)
     masks = functions.create_pyramid(mask_,masks,opt, mode = "mask")
     eyes = functions.create_pyramid(eye_,eyes,opt, mode = "mask")
+    # print(reals[0].size())
+    # print(reals[-1].size())
+    # print(masks[0].size())
+    # print(masks[-1].size())
+    # dsd
   
   
     # Shortcut to get sizes of corresponding crops for each scale
