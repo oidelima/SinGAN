@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 from SinGAN.imresize import imresize
+import GPUtil
+
 
 def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp): 
     real_ = functions.read_image(opt)
@@ -19,7 +21,7 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
     #eye_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
     eye_color = functions.get_eye_color(real)
     opt.eye_color = eye_color
-    
+    #torch.autograd.set_detect_anomaly(True)
     
     in_s = 0
     scale_num = 0
@@ -66,6 +68,7 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
             G_curr.load_state_dict(torch.load('%s/%d/netG.pth' % (opt.out_,scale_num-1)))
             D_curr.load_state_dict(torch.load('%s/%d/netD.pth' % (opt.out_,scale_num-1)))
 
+        
         z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals, crops, masks, eyes, eye_color, Gs,Zs,in_s,NoiseAmp,opt)
 
         G_curr = functions.reset_grads(G_curr,False)
@@ -90,7 +93,7 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
 
 
 def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_s,NoiseAmp,opt,centers=None):
-
+    torch.cuda.empty_cache()
     real_fullsize = reals[len(Gs)]
     crop_size =  crops[len(Gs)].size()[2]
     #real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)
@@ -144,7 +147,6 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
         for j in range(opt.Dsteps):
             # train with real
             netD.zero_grad()
-
             output = netD(real).to(opt.device)
             #D_real_map = output.detach()
             errD_real = -output.mean()#-a
@@ -190,7 +192,9 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
 
             # Stacking masks and noise to make input
             G_input = functions.make_input(noise, mask, eye)
+            
             fake_background = netG(G_input.detach(),prev)
+            
             
             # Cropping mask shape from generated image and putting on top of real image at random location
             fake, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask, eye, eye_color, opt)            
@@ -199,9 +203,10 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
             # plt.show()
             # plt.imshow(real.squeeze().permute(1,2,0).detach().cpu())
             # plt.show()
-            
+
             output = netD(fake.detach())
             errD_fake = output.mean()
+
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
@@ -218,8 +223,9 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
         ###########################
 
         for j in range(opt.Gsteps):
+
             netG.zero_grad()
-            output = netD(fake)
+            output = netD(fake.detach())
             #D_fake_map = output.detach()
             errG = -output.mean()
             errG.backward(retain_graph=True)
@@ -238,7 +244,7 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                 rec_loss = 0
 
             optimizerG.step()
-
+        
         errG2plot.append(errG.detach()+rec_loss)
         D_real2plot.append(D_x)
         D_fake2plot.append(D_G_z)
@@ -263,13 +269,19 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
 
 
             torch.save(z_opt, '%s/z_opt.pth' % (opt.outf))
-
+        
         schedulerD.step()
         schedulerG.step()
         
         #real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  #randomly find crop in image
 
     functions.save_networks(netG,netD,z_opt,opt)
+    # del fake_background, fake, eye_ind, fake_ind, real
+    # GPUtil.showUtilization()
+
+    # torch.cuda.empty_cache()
+    # GPUtil.showUtilization()
+
     return z_opt,in_s,netG 
 
 def draw_concat(Gs,Zs, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_image,opt):

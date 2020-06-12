@@ -2,4 +2,5 @@
 Output/
 TrainedModels/
 __pycache__/
+env/
 .idea
