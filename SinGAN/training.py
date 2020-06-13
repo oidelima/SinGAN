@@ -29,6 +29,10 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
     reals = functions.create_pyramid(real,reals, opt)
     masks = functions.create_pyramid(mask_,masks,opt, mode = "mask")
     eyes = functions.create_pyramid(eye_,eyes,opt, mode = "mask")
+    # print(reals[0].size())
+    # print(masks[0].size())
+    # print(masks[-1].size())
+    # dsd
   
   
     # Shortcut to get sizes of corresponding crops for each scale
@@ -82,9 +86,9 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
 
 def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_s,NoiseAmp,opt,centers=None):
     
-    real_fullsize = reals[len(Gs)]
+    real = reals[len(Gs)]
     crop_size =  crops[len(Gs)].size()[2]
-    real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)
+    #real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)
     #real = real_fullsize.clone()  
     mask = masks[len(Gs)]
     eye = eyes[len(Gs)]
@@ -160,9 +164,9 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                     z_prev = m_image(z_prev)
                     prev = z_prev
                 else:
-                    prev = draw_concat(Gs,Zs,crops, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                    prev = draw_concat(Gs,Zs,reals, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                     prev = m_image(prev)
-                    z_prev = draw_concat(Gs,Zs,crops, masks, eyes, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
+                    z_prev = draw_concat(Gs,Zs,reals, masks, eyes, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
                     criterion = nn.MSELoss()
                     #print(z_prev.get_device())
                     #print(real.get_device())
@@ -170,7 +174,7 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                     opt.noise_amp = opt.noise_amp_init*RMSE
                     z_prev = m_image(z_prev)
             else:
-                prev = draw_concat(Gs,Zs,crops, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                prev = draw_concat(Gs,Zs,reals, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                 prev = m_image(prev)
 
             if opt.mode == 'paint_train':
@@ -266,14 +270,13 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
         schedulerD.step()
         schedulerG.step()
         
-        real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  #randomly find crop in image
+        #real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  #randomly find crop in image
 
     functions.save_networks(netG,netD,z_opt,opt)
 
     return z_opt,in_s,netG 
 
-def draw_concat(Gs,Zs, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_image,opt):
-    reals = crops
+def draw_concat(Gs,Zs, reals, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_image,opt):
     G_z = in_s
     if len(Gs) > 0:
         if mode == 'rand':

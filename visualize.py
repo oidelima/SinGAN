@@ -11,8 +11,8 @@ NUM_EXAMPLES = 20
 curr_img = 0
 img = "94547580-ivy-growing-on-the-forest-floor"
 part = "fake"
-method_1 = "random_crop_"
-method_2 = "SinGAN_"
+method_1 = "random_crop"
+method_2 = "SinGAN"
 
 images_window = viz.images(np.zeros((2, 3, 250, 250)))
 
