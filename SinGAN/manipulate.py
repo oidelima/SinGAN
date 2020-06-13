@@ -91,15 +91,15 @@ def random_crop_generate(real, mask, eye, opt, num_samples = 20):
     
     for i in range(num_samples):
         fake_background, _, _ = functions.random_crop(real, opt.patch_size)
-        # crop, h_idx, w_idx = functions.random_crop(real, opt.crop_size)  
+        crop, h_idx, w_idx = functions.random_crop(real, opt.crop_size)  
          
-        I_curr, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask, eye, opt.eye_color, opt, border = True)
+        I_curr, fake_ind, eye_ind = functions.gen_fake(crop, fake_background, mask, eye, opt.eye_color, opt, border = True)
         
         
-        # full_fake = real.clone()
-        # full_fake[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = I_curr
-        # full_mask = torch.zeros_like(full_fake)
-        # full_mask[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = fake_ind
+        full_fake = real.clone()
+        full_fake[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = I_curr
+        full_mask = torch.zeros_like(full_fake)
+        full_mask[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = fake_ind
         
         dir2save = '%s/RandomSamples/%s/random_crop' % (opt.out, opt.input_name[:-4])
         try:
@@ -107,9 +107,8 @@ def random_crop_generate(real, mask, eye, opt, num_samples = 20):
             os.makedirs(dir2save + "/background")
             os.makedirs(dir2save + "/mask")
             os.makedirs(dir2save + "/eye")
-            # os.makedirs(dir2save + "/full_fake")
-            # os.makedirs(dir2save + "/full_mask")
-            
+            os.makedirs(dir2save + "/full_fake")
+            os.makedirs(dir2save + "/full_mask") 
         except OSError:
             pass
         if (opt.mode != "harmonization") & (opt.mode != "editing") & (opt.mode != "SR") & (opt.mode != "paint2image"):
@@ -117,8 +116,8 @@ def random_crop_generate(real, mask, eye, opt, num_samples = 20):
             #plt.imsave('%s/%s/%d.png' % (dir2save, "background", i), functions.convert_image_np(real.detach()), vmin=0,vmax=1)
             plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind.detach()), vmin=0,vmax=1)
             plt.imsave('%s/%s/%d.png' % (dir2save, "eye", i), functions.convert_image_np(eye_ind.detach()), vmin=0,vmax=1)
-            # plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()), vmin=0,vmax=1)
-            # plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()), vmin=0,vmax=1)
+            plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()), vmin=0,vmax=1)
+            plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()), vmin=0,vmax=1)
             #plt.imsave('%s/%d_%d.png' % (dir2save,i,n),functions.convert_image_np(I_curr.detach()), vmin=0, vmax=1)
             #plt.imsave('%s/in_s.png' % (dir2save), functions.convert_image_np(in_s), vmin=0,vmax=1)
 
@@ -126,7 +125,7 @@ def random_crop_generate(real, mask, eye, opt, num_samples = 20):
 def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=20):
     #if torch.is_tensor(in_s) == False:
     if in_s is None:
-        in_s = torch.full(reals[0].shape, 0, device=opt.device)
+        in_s = torch.full(crops[0].shape, 0, device=opt.device)
     images_cur = []
     for G,Z_opt,noise_amp in zip(Gs,Zs,NoiseAmp):
         pad1 = ((opt.ker_size-1)*opt.num_layer)/2
@@ -165,21 +164,21 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
             if n < gen_start_scale:
                 z_curr = Z_opt
 
-            z_in = noise_amp*(z_curr)+I_prev
+            z_in = noise_amp*(z_curr)+I_prev.to(opt.device)
 
             G_input = SinGAN.functions.make_input(z_in, masks[n], eyes[n])
-            fake_background = G(G_input.detach(),I_prev) 
+            fake_background = G(G_input.detach(),I_prev.to(opt.device)) 
             
 
-            #crop_size =  crops[n].size()[2]
-            #crop, h_idx, w_idx = functions.random_crop(reals[n], crop_size)
+            crop_size =  crops[n].size()[2]
+            crop, h_idx, w_idx = functions.random_crop(reals[n], crop_size)
             border = False
             if n == len(reals)-1: border = True
-            I_curr, fake_ind, eye_ind = functions.gen_fake(reals[n], fake_background, masks[n], eyes[n], opt.eye_color, opt, border)
-            # full_fake = reals[n].clone()
-            # full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr
-            # full_mask = torch.zeros_like(full_fake)
-            # full_mask[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = fake_ind
+            I_curr, fake_ind, eye_ind = functions.gen_fake(crop, fake_background, masks[n], eyes[n], opt.eye_color, opt, border)
+            full_fake = reals[n].clone()
+            full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr
+            full_mask = torch.zeros_like(full_fake)
+            full_mask[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = fake_ind
             
             
 
@@ -193,8 +192,8 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
                     os.makedirs(dir2save + "/background")
                     os.makedirs(dir2save + "/mask")
                     os.makedirs(dir2save + "/eye")
-                    # os.makedirs(dir2save + "/full_fake")
-                    # os.makedirs(dir2save + "/full_mask")
+                    os.makedirs(dir2save + "/full_fake")
+                    os.makedirs(dir2save + "/full_mask")
                     
                 except OSError:
                     pass
@@ -203,8 +202,8 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
                     plt.imsave('%s/%s/%d.png' % (dir2save, "background", i), functions.convert_image_np(fake_background.detach()), vmin=0,vmax=1)
                     plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind.detach()), vmin=0,vmax=1)
                     plt.imsave('%s/%s/%d.png' % (dir2save, "eye", i), functions.convert_image_np(eye_ind.detach()), vmin=0,vmax=1)
-                    # plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()), vmin=0,vmax=1)
-                    # plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()), vmin=0,vmax=1)
+                    plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()), vmin=0,vmax=1)
+                    plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()), vmin=0,vmax=1)
                     #plt.imsave('%s/%d_%d.png' % (dir2save,i,n),functions.convert_image_np(I_curr.detach()), vmin=0, vmax=1)
                     #plt.imsave('%s/in_s.png' % (dir2save), functions.convert_image_np(in_s), vmin=0,vmax=1)
             images_cur.append(fake_background)

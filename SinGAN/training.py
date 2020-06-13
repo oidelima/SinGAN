@@ -9,13 +9,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 from SinGAN.imresize import imresize
-import GPUtil
 
 
 def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp): 
     real_ = functions.read_image(opt)
     real = imresize(real_,opt.scale1,opt)
-    real, _ , _ = functions.random_crop(real, opt.crop_size) 
+    #real, _ , _ = functions.random_crop(real, opt.crop_size) 
     mask_ = functions.read_mask(opt)
     eye_ = functions.generate_eye_mask(opt, mask_)
     crop_ = torch.zeros((1,1,opt.crop_size, opt.crop_size)) #Used just for size reference when downsizing
@@ -82,11 +81,11 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
 
 
 def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_s,NoiseAmp,opt,centers=None):
-    torch.cuda.empty_cache()
+    
     real_fullsize = reals[len(Gs)]
     crop_size =  crops[len(Gs)].size()[2]
-    #real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)
-    real = real_fullsize.clone()  
+    real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)
+    #real = real_fullsize.clone()  
     mask = masks[len(Gs)]
     eye = eyes[len(Gs)]
     
@@ -142,6 +141,8 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
             errD_real.backward(retain_graph=True)
             D_x = -errD_real.item()
 
+           
+
             # train with fake
             if (j==0) & (epoch == 0):
                 if (Gs == []) & (opt.mode != 'SR_train'):
@@ -159,15 +160,17 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                     z_prev = m_image(z_prev)
                     prev = z_prev
                 else:
-                    prev = draw_concat(Gs,Zs,reals, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                    prev = draw_concat(Gs,Zs,crops, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                     prev = m_image(prev)
-                    z_prev = draw_concat(Gs,Zs,reals, masks, eyes, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
+                    z_prev = draw_concat(Gs,Zs,crops, masks, eyes, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
                     criterion = nn.MSELoss()
+                    #print(z_prev.get_device())
+                    #print(real.get_device())
                     RMSE = torch.sqrt(criterion(real, z_prev))
                     opt.noise_amp = opt.noise_amp_init*RMSE
                     z_prev = m_image(z_prev)
             else:
-                prev = draw_concat(Gs,Zs,reals, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                prev = draw_concat(Gs,Zs,crops, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                 prev = m_image(prev)
 
             if opt.mode == 'paint_train':
@@ -181,6 +184,8 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
 
             # Stacking masks and noise to make input
             G_input = functions.make_input(noise, mask, eye)
+            
+
             
             fake_background = netG(G_input.detach(),prev)
             
@@ -247,7 +252,6 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
             plt.imsave('%s/fake_indicator.png' %  (opt.outf), functions.convert_image_np(fake_ind.detach()))
             plt.imsave('%s/eye_indicator.png' %  (opt.outf), functions.convert_image_np(eye_ind.detach()))
             plt.imsave('%s/background.png' %  (opt.outf), functions.convert_image_np(fake_background.detach()))
-            
             #plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(input_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
             #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
             #plt.imsave('%s/D_real.png'   % (opt.outf), functions.convert_image_np(D_real_map))
@@ -262,14 +266,9 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
         schedulerD.step()
         schedulerG.step()
         
-        #real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  #randomly find crop in image
+        real, h_idx, w_idx = functions.random_crop(real_fullsize, crop_size)  #randomly find crop in image
 
     functions.save_networks(netG,netD,z_opt,opt)
-    # del fake_background, fake, eye_ind, fake_ind, real
-    # GPUtil.showUtilization()
-
-    # torch.cuda.empty_cache()
-    # GPUtil.showUtilization()
 
     return z_opt,in_s,netG 
 
@@ -290,7 +289,8 @@ def draw_concat(Gs,Zs, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_image,op
                     z = functions.generate_noise([opt.nc_z,Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device)
                 z = m_noise(z)
                 G_z = G_z[:,:,0:real_curr.shape[2],0:real_curr.shape[3]]
-                G_z = m_image(G_z)
+                G_z = m_image(G_z).to(opt.device)
+
                 z_in = noise_amp*z+G_z
                 G_input = functions.make_input(z_in, mask_curr, eyes_curr)
                 G_z = G(G_input.detach(),G_z)
@@ -301,7 +301,9 @@ def draw_concat(Gs,Zs, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_image,op
             count = 0
             for G,Z_opt,real_curr,real_next,mask_curr, eyes_curr,noise_amp in zip(Gs,Zs,reals,reals[1:], masks, eyes, NoiseAmp):
                 G_z = G_z[:, :, 0:real_curr.shape[2], 0:real_curr.shape[3]]
-                G_z = m_image(G_z)
+                
+                G_z = m_image(G_z).to(opt.device)
+                
                 z_in = noise_amp*Z_opt+G_z
                 G_input = functions.make_input(z_in, mask_curr, eyes_curr)
                 G_z = G(G_input.detach(),G_z)
@@ -310,7 +312,8 @@ def draw_concat(Gs,Zs, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_image,op
                 #if count != (len(Gs)-1):
                 #    G_z = m_image(G_z)
                 count += 1
-    return G_z
+
+    return G_z.to(opt.device)
 
 def train_paint(opt,Gs,Zs,reals,NoiseAmp,centers,paint_inject_scale):
     in_s = torch.full(reals[0].shape, 0, device=opt.device)

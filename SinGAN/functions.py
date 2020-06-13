@@ -77,7 +77,7 @@ def convert_image_np_2d(inp):
     # inp = std*
     return inp
 
-def generate_noise(size,num_samp=1,device='cuda',type='gaussian', scale=1):
+def generate_noise(size,num_samp=1,device='cuda:1',type='gaussian', scale=1):
     if type == 'gaussian':
         noise = torch.randn(num_samp, size[0], round(size[1]/scale), round(size[2]/scale), device=device)
         noise = upsampling(noise,size[1], size[2])
@@ -120,7 +120,7 @@ def reset_grads(model,require_grad):
 
 def move_to_gpu(t):
     if (torch.cuda.is_available()):
-        t = t.to(torch.device('cuda'))
+        t = t.to(torch.device('cuda:1'))
     return t
 
 def move_to_cpu(t):
@@ -383,7 +383,7 @@ def create_pyramid(im,pyr_list,opt, mode=None):
             curr_im = imresize_mask(im,scale,opt)  
         else:        
             curr_im = imresize(im,scale,opt)
-        pyr_list.append(curr_im)
+        pyr_list.append(curr_im.to(opt.device))
     return pyr_list
 
 
@@ -441,7 +441,7 @@ def generate_dir2save(opt):
 
 def post_config(opt):
     # init fixed parameters
-    opt.device = torch.device("cpu" if opt.not_cuda else "cuda:0")
+    opt.device = torch.device("cpu" if opt.not_cuda else "cuda:1")
     opt.niter_init = opt.niter
     opt.noise_amp_init = opt.noise_amp
     opt.nfc_init = opt.nfc
