@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 from SinGAN.imresize import imresize
-import GPUtil
+
 
 
 def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp): 
     real_ = functions.read_image(opt)
     real = imresize(real_,opt.scale1,opt)
-    real, _ , _ = functions.random_crop(real, opt.crop_size) 
+    #real, _ , _ = functions.random_crop(real, opt.crop_size) 
     mask_ = functions.read_mask(opt)
     eye_ = functions.generate_eye_mask(opt, mask_)
     crop_ = torch.zeros((1,1,opt.crop_size, opt.crop_size)) #Used just for size reference when downsizing
