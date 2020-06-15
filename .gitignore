@@ -3,4 +3,8 @@ Output/
 TrainedModels/
 __pycache__/
 env/
+Input/
+Input/Images/
+SinGan/__pycache__
+SinGan/config.py
 .idea

@@ -101,7 +101,7 @@ def random_crop_generate(real, mask, eye, opt, num_samples = 20):
         # full_mask = torch.zeros_like(full_fake)
         # full_mask[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = fake_ind
         
-        dir2save = '%s/RandomSamples/%s/random_crop' % (opt.out, opt.input_name[:-4])
+        dir2save = '%s/RandomSamples/%s/random_crop/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
         try:
             os.makedirs(dir2save + "/fake")
             os.makedirs(dir2save + "/background")
@@ -165,6 +165,8 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
                 z_curr = Z_opt
 
             z_in = noise_amp*(z_curr)+I_prev.to(opt.device)
+            
+
 
             G_input = SinGAN.functions.make_input(z_in, masks[n], eyes[n])
             fake_background = G(G_input.detach(),I_prev.to(opt.device)) 
@@ -184,7 +186,7 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
 
             if n == len(reals)-1:
                 if opt.mode == 'train':
-                    dir2save = '%s/RandomSamples/%s/SinGAN' % (opt.out, opt.input_name[:-4])
+                    dir2save = '%s/RandomSamples/%s/SinGAN/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
                 else:
                     dir2save = functions.generate_dir2save(opt)
                 try:

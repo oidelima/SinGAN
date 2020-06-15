@@ -77,7 +77,7 @@ def convert_image_np_2d(inp):
     # inp = std*
     return inp
 
-def generate_noise(size,num_samp=1,device='cuda:1',type='gaussian', scale=1):
+def generate_noise(size,num_samp=1,device='cuda:0',type='gaussian', scale=1):
     if type == 'gaussian':
         noise = torch.randn(num_samp, size[0], round(size[1]/scale), round(size[2]/scale), device=device)
         noise = upsampling(noise,size[1], size[2])
@@ -120,7 +120,7 @@ def reset_grads(model,require_grad):
 
 def move_to_gpu(t):
     if (torch.cuda.is_available()):
-        t = t.to(torch.device('cuda:1'))
+        t = t.to(torch.device('cuda'))
     return t
 
 def move_to_cpu(t):
@@ -210,15 +210,18 @@ def find_valid_eye_location(opt, eye_diam, mask):
         except:
             pass
 
-def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False):
+def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, mask_loc = None):
        
     # Cropping mask shape from generated image and putting on top of real image at random location
-    im_height, im_width = real.size()[2], real.size()[3] 
-    mask_height, mask_width = mask.size()[2], mask.size()[3] 
-    h_loc = np.random.randint(im_height - mask_height)
-    w_loc = np.random.randint(im_width - mask_width)
+    if mask_loc:
+        h_loc, w_loc = mask_loc
+    else:
+        im_height, im_width = real.size()[2], real.size()[3] 
+        mask_height, mask_width = mask.size()[2], mask.size()[3] 
+        h_loc = np.random.randint(im_height - mask_height)
+        w_loc = np.random.randint(im_width - mask_width)
+
     fake = real.clone()
-    
     fake_ind = torch.zeros((1, 3, im_height, im_width))
     eye_ind = torch.zeros((1, 3, im_height, im_width)) 
     
@@ -237,7 +240,7 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False):
     if border:
         border_width = opt.border_width
         shade_amt = opt.shade_amt
-        shrunken_mask = move_to_gpu(torch.from_numpy(scipy.ndimage.morphology.binary_erosion(mask[0, 0, :, :].cpu(), iterations=border_width)).type(torch.float64))
+        shrunken_mask = torch.from_numpy(scipy.ndimage.morphology.binary_erosion(mask[0, 0, :, :].cpu(), iterations=border_width)).type(torch.float64).to(opt.device)
         shrunken_mask = shrunken_mask[None, None, :, :]
         border_mask = mask - shrunken_mask
         shade = (border_mask * shade_amt)
@@ -417,7 +420,7 @@ def generate_in2coarsest(reals,scale_v,scale_h,opt):
 def generate_dir2save(opt):
     dir2save = None
     if (opt.mode == 'train') | (opt.mode == 'SR_train'):
-        dir2save = 'TrainedModels/%s/scale_factor=%f,alpha=%d' % (opt.input_name[:-4], opt.scale_factor_init,opt.alpha)
+        dir2save = 'TrainedModels/%s/name=%s, scale_factor=%f,alpha=%d' % (opt.input_name[:-4],opt.run_name, opt.scale_factor_init,opt.alpha)
     elif (opt.mode == 'animation_train') :
         dir2save = 'TrainedModels/%s/scale_factor=%f_noise_padding' % (opt.input_name[:-4], opt.scale_factor_init)
     elif (opt.mode == 'paint_train') :
@@ -442,7 +445,7 @@ def generate_dir2save(opt):
 
 def post_config(opt):
     # init fixed parameters
-    opt.device = torch.device("cpu" if opt.not_cuda else "cuda:1")
+    opt.device = torch.device("cpu" if opt.not_cuda else "cuda:"+ str(opt.gpu))
     opt.niter_init = opt.niter
     opt.noise_amp_init = opt.noise_amp
     opt.nfc_init = opt.nfc
