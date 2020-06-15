@@ -213,11 +213,12 @@ def find_valid_eye_location(opt, eye_diam, mask):
 def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, mask_loc = None):
        
     # Cropping mask shape from generated image and putting on top of real image at random location
+    im_height, im_width = real.size()[2], real.size()[3] 
+    mask_height, mask_width = mask.size()[2], mask.size()[3] 
+    
     if mask_loc:
         h_loc, w_loc = mask_loc
-    else:
-        im_height, im_width = real.size()[2], real.size()[3] 
-        mask_height, mask_width = mask.size()[2], mask.size()[3] 
+    else:  
         h_loc = np.random.randint(im_height - mask_height)
         w_loc = np.random.randint(im_width - mask_width)
 

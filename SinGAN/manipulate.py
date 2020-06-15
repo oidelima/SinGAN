@@ -87,14 +87,14 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     imageio.mimsave('%s/start_scale=%d/alpha=%f_beta=%f.gif' % (dir2save,start_scale,alpha,beta),images_cur,fps=fps)
     del images_cur
 
-def random_crop_generate(real, mask, eye, opt, num_samples = 20):
+def random_crop_generate(real, mask, eye, opt, num_samples = 20, mask_locs = None):
     
     for i in range(num_samples):
         fake_background, _, _ = functions.random_crop(real, opt.patch_size)
-        #real, h_idx, w_idx = functions.random_crop(real, opt.crop_size)  
-         
-        I_curr, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask, eye, opt.eye_color, opt, border = True)
-        
+        #real, h_idx, w_idx = functions.random_crop(real, opt.crop_size)
+
+        mask_loc = mask_locs[i] if mask_locs else None
+        I_curr, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask, eye, opt.eye_color, opt, border = True, mask_loc = mask_loc)
         
         # full_fake = real.clone()
         # full_fake[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = I_curr
@@ -122,7 +122,7 @@ def random_crop_generate(real, mask, eye, opt, num_samples = 20):
             #plt.imsave('%s/in_s.png' % (dir2save), functions.convert_image_np(in_s), vmin=0,vmax=1)
 
 
-def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=20):
+def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=20, mask_locs=None):
     #if torch.is_tensor(in_s) == False:
     if in_s is None:
         in_s = torch.full(reals[0].shape, 0, device=opt.device)
@@ -176,7 +176,9 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
             #crop, h_idx, w_idx = functions.random_crop(reals[n], crop_size)
             border = False
             if n == len(reals)-1: border = True
-            I_curr, fake_ind, eye_ind = functions.gen_fake(reals[n], fake_background, masks[n], eyes[n], opt.eye_color, opt, border)
+            
+            mask_loc = mask_locs[i] if mask_locs and n == len(reals)-1 else None
+            I_curr, fake_ind, eye_ind = functions.gen_fake(reals[n], fake_background, masks[n], eyes[n], opt.eye_color, opt, border, mask_loc)
             # full_fake = reals[n].clone()
             # full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr
             # full_mask = torch.zeros_like(full_fake)

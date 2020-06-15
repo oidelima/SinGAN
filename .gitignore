@@ -5,6 +5,7 @@ __pycache__/
 env/
 Input/
 Input/Images/
-SinGan/__pycache__
+SinGan/_pycache_
 SinGan/config.py
 .idea
+config.pyc
