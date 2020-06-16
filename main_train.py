@@ -22,7 +22,8 @@ if __name__ == '__main__':
     parser.add_argument('--shade_amt', type=float, default=0.0)
     parser.add_argument('--mode', help='task to be done', default='train')
     parser.add_argument('--resize', action='store_true', help='enables random mask resize during training')
-    parser.add_argument('--random_eye', action='store_true', help='enables random eye position during training')
+    parser.add_argument('--random_crop', action='store_true', help='enables random crop during training')
+    #parser.add_argument('--random_eye', action='store_true', help='enables random eye position during training')
     
     opt = parser.parse_args()
     opt = functions.post_config(opt)
@@ -44,7 +45,8 @@ if __name__ == '__main__':
         except OSError:
             pass
         real = functions.read_image(opt)
-        #crop, _ , _ = functions.random_crop(real, opt.crop_size) 
+        if opt.random_crop:
+            real, _ , _ = functions.random_crop(real, opt.crop_size) 
         functions.adjust_scales2image(real, opt)
         train(opt, Gs, Zs, reals, crops, masks, eyes, NoiseAmp)
 
