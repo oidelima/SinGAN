@@ -14,22 +14,30 @@ part = "fake"
 method_1 = "random_crop"
 method_2 = "SinGAN"
 
-images_window = viz.images(np.zeros((2, 3, 250, 250)))
+images_window = viz.images(np.zeros((7, 3, 250, 250)))
 
 def type_callback(event):
     global curr_img, images_window, viz
     if event['event_type'] == 'KeyPress':
         #curr_img = event['pane_data']['i']
         if event['key'] == 'Enter' and curr_img < NUM_EXAMPLES:
-            gan_img = imageio.imread(os.path.join(dir, img, method_2, part, str(curr_img)+".png"))[:, :, :3]
-            gan_img = np.transpose(gan_img, (2, 0, 1)) 
-            gan_img = np.expand_dims(gan_img, axis = 0)  
-            crop_img = imageio.imread(os.path.join(dir, img, method_1, part, str(curr_img)+".png"))[:, :, :3]
-            crop_img = np.transpose(crop_img, (2, 0, 1)) 
-            crop_img = np.expand_dims(crop_img, axis = 0)
-            joint_img = np.concatenate((gan_img, crop_img), axis=0)
-            images_window = viz.images(joint_img, win = images_window, opts={'title': 'SinGAN vs Random Crop. Example: {} / {}'.format(curr_img + 1, NUM_EXAMPLES),
-                                                                             'height':10000})
+            # gan_img = imageio.imread(os.path.join(dir, img, method_2, part, str(curr_img)+".png"))[:, :, :3]
+            # gan_img = np.transpose(gan_img, (2, 0, 1)) 
+            # gan_img = np.expand_dims(gan_img, axis = 0)  
+            alphas = []
+            for i in range(1,8):
+                gan_img = imageio.imread(os.path.join(dir, img, method_2,"alpha_"+str(i), part, str(curr_img)+".png"))[:, :, :3]
+                gan_img = np.transpose(gan_img, (2, 0, 1)) 
+                gan_img = np.expand_dims(gan_img, axis = 0)  
+                alphas.append(gan_img)
+            # crop_img = imageio.imread(os.path.join(dir, img, method_1, part, str(curr_img)+".png"))[:, :, :3]
+            # crop_img = np.transpose(crop_img, (2, 0, 1)) 
+            # crop_img = np.expand_dims(crop_img, axis = 0)
+            joint_img = np.concatenate(alphas, axis=0)
+            images_window = viz.images(joint_img, win = images_window, opts={'title': ' Example: {} / {}'.format(curr_img + 1, NUM_EXAMPLES), 
+                                                                             'caption':'Alphas',
+                                                                             },
+                                                                             )
             viz.update_window_opts(
                 win=images_window,
                 opts=dict(

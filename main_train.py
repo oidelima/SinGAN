@@ -47,6 +47,8 @@ if __name__ == '__main__':
 
         im_height, im_width = reals[-1].size()[2], reals[-1].size()[3]
         mask_locs = [(np.random.randint(im_height - opt.patch_size), np.random.randint(im_width - opt.patch_size)) for i in range(opt.num_samples)]
+        #mask_locs = [(63, 141), (60, 23), (74, 134), (82, 68), (90, 7), (29, 73), (44, 153), (77, 131), (29, 112), (10, 124), (83, 112), 
+        #            (10, 16), (72, 25), (17, 147), (84, 138), (61, 144), (12, 111), (81, 26), (20, 14), (19, 59)]
         SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt, num_samples = opt.num_samples, mask_locs = mask_locs)
         random_crop_generate(reals[-1], masks[-1], eyes[-1], opt, num_samples = opt.num_samples, mask_locs = mask_locs)
 

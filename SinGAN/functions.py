@@ -215,7 +215,7 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, m
     # Cropping mask shape from generated image and putting on top of real image at random location
     im_height, im_width = real.size()[2], real.size()[3] 
     mask_height, mask_width = mask.size()[2], mask.size()[3] 
-    
+
     if mask_loc:
         h_loc, w_loc = mask_loc
     else:  
