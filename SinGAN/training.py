@@ -191,20 +191,22 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                 min_patch_size = int(max(mask.size()[2] * 0.75, 1))
                 patch_size = random.randint(min_patch_size, max_patch_size)
                 mask_in = nn.functional.interpolate(mask.clone(), size=patch_size) 
-                eye = nn.functional.interpolate(eye, size=patch_size)
+                eye_in = nn.functional.interpolate(eye.clone(), size=patch_size)
             else:
                 mask_in = mask.clone()
 
-            
+            # if opt.random_eye:
+            #     eye_in = functions.generate_eye_mask(opt, mask_in)
+                
 
 
             # Stacking masks and noise to make input
-            G_input = functions.make_input(noise, mask_in, eye)
+            G_input = functions.make_input(noise, mask_in, eye_in)
              
             fake_background = netG(G_input.detach(),prev)
               
             # Cropping mask shape from generated image and putting on top of real image at random location
-            fake, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask_in, eye, eye_color, opt)            
+            fake, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask_in, eye_in, eye_color, opt)            
                                                                                                                                                                                     
             # plt.imshow(real.squeeze().detach().cpu(), cmap="gray")
             # plt.show()
@@ -242,7 +244,7 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
                     z_prev = functions.quant2centers(z_prev, centers)
                     plt.imsave('%s/z_prev.png' % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
                 Z_opt = opt.noise_amp*z_opt+z_prev
-                input_opt = functions.make_input(Z_opt, mask_in, eye)
+                input_opt = functions.make_input(Z_opt, mask_in, eye_in)
                 rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),real)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()

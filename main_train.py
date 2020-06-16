@@ -22,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('--shade_amt', type=float, default=0.0)
     parser.add_argument('--mode', help='task to be done', default='train')
     parser.add_argument('--resize', action='store_true', help='enables random mask resize during training')
+    parser.add_argument('--random_eye', action='store_true', help='enables random eye position during training')
     
     opt = parser.parse_args()
     opt = functions.post_config(opt)
