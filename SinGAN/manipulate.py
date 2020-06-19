@@ -192,6 +192,7 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
             if opt.random_crop:
                 crop_size =  crops[n].size()[2]
                 crop, h_idx, w_idx = functions.random_crop(reals[n], crop_size)
+
                 I_curr, fake_ind, eye_ind = functions.gen_fake(crop, fake_background, masks[n], eyes[n], opt.eye_color, opt, border, mask_loc)
                 full_fake = reals[n].clone()
                 full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr

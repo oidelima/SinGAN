@@ -222,6 +222,7 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, m
         h_loc = np.random.randint(im_height - mask_height)
         w_loc = np.random.randint(im_width - mask_width)
 
+
     fake = real.clone()
     fake_ind = torch.zeros((1, 3, im_height, im_width))
     eye_ind = torch.zeros((1, 3, im_height, im_width)) 
@@ -247,7 +248,6 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, m
         shade = (border_mask * shade_amt)
 
     
-
     # overaying shape and eye mask on image
     fake[:,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = (fake_background[:,:,0:mask_height ,0:mask_width] *(mask)\
                                                                     + real[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1))*abs(eye-1)\

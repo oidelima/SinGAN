@@ -236,7 +236,7 @@ def train_single_scale(netD,netG,reals, crops,  masks,eyes, eye_color, Gs,Zs,in_
         for j in range(opt.Gsteps):
 
             netG.zero_grad()
-            output = netD(fake.detach())
+            output = netD(fake)
             #D_fake_map = output.detach()
             errG = -output.mean()
             errG.backward(retain_graph=True)
