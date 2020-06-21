@@ -23,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', help='task to be done', default='train')
     parser.add_argument('--resize', action='store_true', help='enables random mask resize during training')
     parser.add_argument('--random_crop', action='store_true', help='enables random crop during training')
-    #parser.add_argument('--random_eye', action='store_true', help='enables random eye position during training')
+    parser.add_argument('--random_eye', action='store_true', help='enables random eye position during training')
     
     opt = parser.parse_args()
     opt = functions.post_config(opt)
@@ -31,7 +31,6 @@ if __name__ == '__main__':
     Zs = []
     reals = []
     masks = []
-    eyes = []
     crops = []
     NoiseAmp = []
     dir2save = functions.generate_dir2save(opt)
@@ -48,15 +47,16 @@ if __name__ == '__main__':
         if opt.random_crop:
             real, _ , _ = functions.random_crop(real, opt.crop_size) 
         functions.adjust_scales2image(real, opt)
-        train(opt, Gs, Zs, reals, crops, masks, eyes, NoiseAmp)
-
+        train(opt, Gs, Zs, reals, crops, masks, NoiseAmp)
+        
         if opt.random_crop:
             im_height, im_width = crops[-1].size()[2], crops[-1].size()[3]
         else:
             im_height, im_width = reals[-1].size()[2], reals[-1].size()[3]
-        mask_locs = [(np.random.randint(im_height - opt.patch_size), np.random.randint(im_width - opt.patch_size)) for i in range(opt.num_samples)]
-        # mask_locs = [(63, 141), (60, 23), (74, 134), (82, 68), (90, 7), (29, 73), (44, 153), (77, 131), (29, 112), (10, 124), (83, 112), 
-        #            (10, 16), (72, 25), (17, 147), (84, 138), (61, 144), (12, 111), (81, 26), (20, 14), (19, 59)]
-        SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt, num_samples = opt.num_samples, mask_locs = mask_locs)
-        random_crop_generate(reals[-1], masks[-1], eyes[-1], opt, num_samples = opt.num_samples, mask_locs = mask_locs)
+        #mask_locs = [(np.random.randint(im_height - opt.patch_size), np.random.randint(im_width - opt.patch_size)) for i in range(opt.num_samples)]
+        mask_locs = [(27, 45), (47, 59), (69, 28), (44, 55), (15, 35), (44, 40), (67, 26), 
+                     (16, 60), (8, 51), (12, 30), (60, 29), (58, 45), (11, 21), (64, 66), (7, 67), 
+                     (27, 68), (52, 57), (7, 49), (29, 3), (15, 49)]
+        SinGAN_generate(Gs,Zs,reals, crops, masks, NoiseAmp,opt, num_samples = opt.num_samples, mask_locs = mask_locs)
+        random_crop_generate(reals[-1], masks[-1], opt, num_samples = opt.num_samples, mask_locs = mask_locs)
 

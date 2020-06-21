@@ -182,21 +182,25 @@ def read_mask(opt):
     #x = x.type(torch.FloatTensor)
     return x
 
-def generate_eye_mask(opt, mask):
+def generate_eye_mask(opt, mask, level):
+    
+    scale = math.pow(opt.scale_factor, level)
     
     im_height, im_width = mask.size()[2], mask.size()[3]
-
     # Make eye constraint mask
     eye_diam = opt.eye_diam
-    eye = Image.new('RGB', (opt.patch_size, opt.patch_size))
+    eye = Image.new('RGB', (mask.size()[2], mask.size()[3]))
     draw = ImageDraw.Draw(eye)
     eye_loc = find_valid_eye_location(opt, eye_diam, mask)
     draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
     eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
     eye[eye>0] = 1 
+    
     if not(opt.not_cuda):
         eye = move_to_gpu(eye)
         eye = eye.unsqueeze(0)
+        
+    eye = imresize_mask(eye,scale,opt)
     return eye
 
         
@@ -204,7 +208,7 @@ def find_valid_eye_location(opt, eye_diam, mask):
 
     while True:
         try:
-            loc = (random.randint(0, opt.patch_size), random.randint(0, opt.patch_size))   
+            loc = (random.randint(0, mask.size()[2]), random.randint(0, mask.size()[3]))   
             if mask[:, :, loc[0], loc[1]] == 1 and mask[:, :, loc[0] + eye_diam, loc[1] + eye_diam] == 1:
                 return loc
         except:
@@ -517,5 +521,53 @@ def dilate_mask(mask,opt):
     plt.imsave('%s/%s_mask_dilated.png' % (opt.ref_dir, opt.ref_name[:-4]), convert_image_np(mask), vmin=0,vmax=1)
     mask = (mask-mask.min())/(mask.max()-mask.min())
     return mask
+
+
+def draw_concat(Gs,Zs, reals, crops, masks, eye, NoiseAmp,in_s,mode,m_noise,m_image,opt):
+    G_z = in_s
+
+    if opt.random_crop:
+        reals = crops # use crop sizes if cropping
+
+    if len(Gs) > 0:
+        if mode == 'rand':
+            count = 0
+            pad_noise = int(((opt.ker_size-1)*opt.num_layer)/2)
+            if opt.mode == 'animation_train':
+                pad_noise = 0
+            for G,Z_opt,real_curr,real_next, mask_curr, noise_amp in zip(Gs,Zs,reals,reals[1:], masks,  NoiseAmp):
+                if count == 0:
+                    z = generate_noise([1, Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device)
+                    z = z.expand(1, 3, z.shape[2], z.shape[3])
+                else:
+                    z = generate_noise([opt.nc_z,Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device)
+                z = m_noise(z)
+                
+                G_z = G_z[:,:,0:real_curr.shape[2],0:real_curr.shape[3]]
+                G_z = m_image(G_z).to(opt.device)
+
+                z_in = noise_amp*z+G_z
+                G_input = make_input(z_in, mask_curr, eye)
+                G_z = G(G_input.detach(),G_z)
+                G_z = imresize(G_z,1/opt.scale_factor,opt)
+                G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
+                count += 1
+        if mode == 'rec':
+            count = 0
+            for G,Z_opt,real_curr,real_next,mask_curr,noise_amp in zip(Gs,Zs,reals,reals[1:], masks, NoiseAmp):
+                G_z = G_z[:, :, 0:real_curr.shape[2], 0:real_curr.shape[3]]
+                
+                G_z = m_image(G_z).to(opt.device)
+                
+                z_in = noise_amp*Z_opt+G_z
+                G_input = make_input(z_in, mask_curr, eye)
+                G_z = G(G_input.detach(),G_z)
+                G_z = imresize(G_z,1/opt.scale_factor,opt)
+                G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
+                #if count != (len(Gs)-1):
+                #    G_z = m_image(G_z)
+                count += 1
+
+    return G_z.to(opt.device)
 
 
