@@ -62,6 +62,14 @@ def imresize(im,scale,opt):
     #im = im[:, :, 0:int(scale * s[2]), 0:int(scale * s[3])]
     return im
 
+def batch_imresize(im,scale,opt):
+    imgs = []
+    for i in range(opt.batch_size):
+        im_ = imresize(im[i:i+1,:,:,:],scale,opt)
+        imgs += im_[None, :, :, :]
+    batch = torch.cat(imgs, dim=0)
+    return batch
+
 def imresize_mask(im,scale,opt):
     
     im = torch2uint8_mask(im)
@@ -73,6 +81,7 @@ def imresize_mask(im,scale,opt):
     if not (opt.not_cuda):
         im = move_to_gpu(im)
     #im = im[:, :, 0:int(scale * s[2]), 0:int(scale * s[3])]
+    
     return im
 
 def imresize_to_shape(im,output_shape,opt):

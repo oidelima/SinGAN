@@ -9,7 +9,7 @@ from skimage import io as img
 from skimage import color, morphology, filters
 #from skimage import morphology
 #from skimage import filters
-from SinGAN.imresize import imresize, imresize_mask
+from SinGAN.imresize import imresize, imresize_mask, batch_imresize
 import os
 import random
 from sklearn.cluster import KMeans
@@ -155,18 +155,20 @@ def read_image(opt):
     x = x[:,0:3,:,:]
     return x
 
-def random_crop(real, crop_size):
+def random_crop(real, crop_size, opt):
+    
     height = real.shape[2]
     width = real.shape[3]
-                
-    h_idx = np.random.randint(height - crop_size, size=1)
-    w_idx = np.random.randint(width - crop_size, size=1)
-    h_idx_end = h_idx + crop_size
-    w_idx_end = w_idx + crop_size
-    
-    crop = real[:,:,h_idx[0]:h_idx_end[0],w_idx[0]:w_idx_end[0]]
+    crop = torch.zeros((opt.batch_size, 3, crop_size, crop_size))
+     
+    for i in range(opt.batch_size):                
+        h_idx = np.random.randint(height - crop_size, size=1)
+        w_idx = np.random.randint(width - crop_size, size=1)
+        h_idx_end = h_idx + crop_size
+        w_idx_end = w_idx + crop_size
+        crop[i] = real[:,:,h_idx[0]:h_idx_end[0],w_idx[0]:w_idx_end[0]]
 
-    return crop, int(h_idx), int(w_idx)
+    return crop.to(opt.device), int(h_idx), int(w_idx)
 
 def read_mask(opt):
     #x = img.imread('%s/%s' % (opt.mask_dir,opt.mask_name))
@@ -216,53 +218,57 @@ def find_valid_eye_location(opt, eye_diam, mask):
         except:
             pass
 
-def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, mask_loc = None):
+def gen_fake(real, fake_background, mask, opt, border = False, mask_loc = None):
        
     # Cropping mask shape from generated image and putting on top of real image at random location
     im_height, im_width = real.size()[2], real.size()[3] 
     mask_height, mask_width = mask.size()[2], mask.size()[3] 
-
-    if mask_loc:
-        h_loc, w_loc = mask_loc
-    else:  
-        h_loc = np.random.randint(im_height - mask_height)
-        w_loc = np.random.randint(im_width - mask_width)
-
-
+    
     fake = real.clone()
-    fake_ind = torch.zeros((1, 3, im_height, im_width))
-    eye_ind = torch.zeros((1, 3, im_height, im_width)) 
-    
-    
-    #coloring eye
-    eye_colored = eye.clone()
-    eye_colored[:, 0, :, :] *= (eye_color[0]/255)
-    eye_colored[:, 1, :, :] *= (eye_color[1]/255)
-    eye_colored[:, 2, :, :] *= (eye_color[2]/255)
+    fake_ind = torch.zeros((opt.batch_size, 3, im_height, im_width))
+
+    for i in range(opt.batch_size):
         
-    # Shading border of mask
-    shade = 0
-    
-    if border:
-        border_width = opt.border_width
-        shade_amt = opt.shade_amt
-        shrunken_mask = torch.from_numpy(scipy.ndimage.morphology.binary_erosion(mask[0, 0, :, :].cpu(), iterations=border_width)).type(torch.float64).to(opt.device)
-        shrunken_mask = shrunken_mask[None, None, :, :]
-        border_mask = mask - shrunken_mask
-        shade = (border_mask * shade_amt)
+        if mask_loc:
+            h_loc, w_loc = mask_loc
+            ds
+        else:  
+            h_loc = np.random.randint(im_height - mask_height)
+            w_loc = np.random.randint(im_width - mask_width)
 
-    
-    # overaying shape and eye mask on image
-    fake[:,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = (fake_background[:,:,0:mask_height ,0:mask_width] *(mask)\
-                                                                    + real[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1))*abs(eye-1)\
-                                                                    + eye_colored - shade
-    
 
-    
-    fake_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[:,:,0:mask_height ,0:mask_width] *(mask) - shade
-    eye_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye_colored
+        
+        
+        # eye_ind = torch.zeros((1, 3, im_height, im_width)) 
+        # #coloring eye
+        # eye_colored = eye.clone()
+        # eye_colored[:, 0, :, :] *= (eye_color[0]/255)
+        # eye_colored[:, 1, :, :] *= (eye_color[1]/255)
+        # eye_colored[:, 2, :, :] *= (eye_color[2]/255)
+            
+        # Shading border of mask
+        shade = 0
+        
+        # if border:
+        #     border_width = opt.border_width
+        #     shade_amt = opt.shade_amt
+        #     shrunken_mask = torch.from_numpy(scipy.ndimage.morphology.binary_erosion(mask[0, 0, :, :].cpu(), iterations=border_width)).type(torch.float64).to(opt.device)
+        #     shrunken_mask = shrunken_mask[None, None, :, :]
+        #     border_mask = mask - shrunken_mask
+        #     shade = (border_mask * shade_amt)
+
+        
+        # overaying shape and eye mask on image
+        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = (fake_background[i,:,0:mask_height ,0:mask_width] *(mask)\
+                                                                        + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1))\
+                                                                        - shade
+        
+
+        
+        fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,0:mask_height ,0:mask_width] *(mask) - shade
+        #eye_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye_colored
                                            
-    return fake, fake_ind, eye_ind
+    return fake, fake_ind
  
 def get_eye_color(real):
     height, width = real.size()[2], real.size()[3]
@@ -280,14 +286,13 @@ def pad_mask(mask, input_size):
     mask = torch.nn.functional.pad(mask, p2d, "constant", 0)
     return mask
 
-def make_input(noise, mask, eye):
+def make_input(noise, mask, opt):
     noise_height, noise_width = noise.size()[2], noise.size()[3] 
-    
-    mask_in = pad_mask(mask, (noise_height, noise_width)).float() # Padding masks to make same size as input 
+    mask = mask.repeat(opt.batch_size, 1, 1, 1)
+    mask = pad_mask(mask, (noise_height, noise_width)).float() # Padding masks to make same size as input 
     #eye_in = pad_mask(eye[:, 0:1, :, :], (noise_height, noise_width)).float()
-    eye_in = pad_mask(eye[:, :, :, :], (noise_height, noise_width)).float()
-    G_input = torch.cat((noise, mask_in, eye_in), dim=1) # concatenating to make input to generator
-    
+    #eye_in = pad_mask(eye[:, :, :, :], (noise_height, noise_width)).float()
+    G_input = torch.cat((noise, mask), dim=1) # concatenating to make input to generator
     return G_input                 
 
 def preprocess_mask(im, opt):
@@ -523,7 +528,7 @@ def dilate_mask(mask,opt):
     return mask
 
 
-def draw_concat(Gs,Zs, reals, crops, masks, eye, NoiseAmp,in_s,mode,m_noise,m_image,opt):
+def draw_concat(Gs,Zs, reals, crops, masks, NoiseAmp,in_s,mode,m_noise,m_image,opt):
     G_z = in_s
 
     if opt.random_crop:
@@ -537,19 +542,19 @@ def draw_concat(Gs,Zs, reals, crops, masks, eye, NoiseAmp,in_s,mode,m_noise,m_im
                 pad_noise = 0
             for G,Z_opt,real_curr,real_next, mask_curr, noise_amp in zip(Gs,Zs,reals,reals[1:], masks,  NoiseAmp):
                 if count == 0:
-                    z = generate_noise([1, Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device)
-                    z = z.expand(1, 3, z.shape[2], z.shape[3])
+                    z = generate_noise([1, Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device,num_samp=opt.batch_size)
+                    z = z.expand(opt.batch_size, 3, z.shape[2], z.shape[3])
                 else:
-                    z = generate_noise([opt.nc_z,Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device)
+                    z = generate_noise([opt.nc_z,Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device, num_samp=opt.batch_size)
                 z = m_noise(z)
                 
                 G_z = G_z[:,:,0:real_curr.shape[2],0:real_curr.shape[3]]
                 G_z = m_image(G_z).to(opt.device)
 
                 z_in = noise_amp*z+G_z
-                G_input = make_input(z_in, mask_curr, eye)
+                G_input = make_input(z_in, mask_curr, opt)
                 G_z = G(G_input.detach(),G_z)
-                G_z = imresize(G_z,1/opt.scale_factor,opt)
+                G_z = batch_imresize(G_z,1/opt.scale_factor,opt)
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 count += 1
         if mode == 'rec':
@@ -560,9 +565,9 @@ def draw_concat(Gs,Zs, reals, crops, masks, eye, NoiseAmp,in_s,mode,m_noise,m_im
                 G_z = m_image(G_z).to(opt.device)
                 
                 z_in = noise_amp*Z_opt+G_z
-                G_input = make_input(z_in, mask_curr, eye)
+                G_input = make_input(z_in, mask_curr, opt)
                 G_z = G(G_input.detach(),G_z)
-                G_z = imresize(G_z,1/opt.scale_factor,opt)
+                G_z = batch_imresize(G_z,1/opt.scale_factor,opt)
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 #if count != (len(Gs)-1):
                 #    G_z = m_image(G_z)
