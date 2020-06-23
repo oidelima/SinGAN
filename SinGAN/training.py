@@ -15,6 +15,7 @@ from SinGAN.imresize import imresize
 def train(opt,Gs,Zs,reals, crops, masks, NoiseAmp): 
     real_ = functions.read_image(opt)
     real = imresize(real_,opt.scale1,opt)
+    
     #real, _ , _ = functions.random_crop(real, opt.crop_size) 
     mask_ = functions.read_mask(opt)
     #eye_ = functions.generate_eye_mask(opt, mask_, 0)
@@ -87,9 +88,10 @@ def train_single_scale(netD,netG,reals, crops,  masks, eye_color, Gs,Zs,in_s,Noi
     
     
     real_fullsize = reals[len(Gs)]
+    
 
-    fixed_crop = 
     crop_size =  crops[len(Gs)].size()[2]
+    fixed_crop = real_fullsize[:,:,0:crop_size,0:crop_size]
     if opt.random_crop:
         real, h_idx, w_idx = functions.random_crop(real_fullsize.clone(), crop_size)
     else:
@@ -128,9 +130,28 @@ def train_single_scale(netD,netG,reals, crops,  masks, eye_color, Gs,Zs,in_s,Noi
     z_opt2plot = []
     
     eye = functions.generate_eye_mask(opt, masks[-1], opt.stop_scale - len(Gs))
-
+    
+    
     for epoch in range(opt.niter):
         
+        if opt.resize:
+            max_patch_size = int(min(real.size()[2], real.size()[3],mask.size()[2]*1.25))
+            min_patch_size = int(max(mask.size()[2] * 0.75, 1))
+            patch_size = random.randint(min_patch_size, max_patch_size)
+            mask_in = nn.functional.interpolate(mask.clone(), size=patch_size) 
+            eye_in = nn.functional.interpolate(eye.clone(), size=patch_size)
+        else:
+            mask_in = mask.clone()
+            eye_in = eye.clone()
+                
+                
+        eye_colored = eye_in.clone() 
+        if opt.random_eye_color:
+            eye_color = functions.get_eye_color(real)
+            eye_colored[:, 0, :, :] *= (eye_color[0]/255)
+            eye_colored[:, 1, :, :] *= (eye_color[1]/255)
+            eye_colored[:, 2, :, :] *= (eye_color[2]/255)
+                
         if (Gs == []) & (opt.mode != 'SR_train'):
             z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device)
             z_opt = m_noise(z_opt.expand(1,3,opt.nzx,opt.nzy))
@@ -171,9 +192,9 @@ def train_single_scale(netD,netG,reals, crops,  masks, eye_color, Gs,Zs,in_s,Noi
                     z_prev = m_image(z_prev)
                     prev = z_prev
                 else:
-                    prev = functions.draw_concat(Gs,Zs,reals, crops, masks, eye, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                    prev = functions.draw_concat(Gs,Zs,reals, crops, masks, eye_colored, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                     prev = m_image(prev)
-                    z_prev = functions.draw_concat(Gs,Zs,reals, crops, masks,  eye, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
+                    z_prev = functions.draw_concat(Gs,Zs,reals, crops, masks,  eye_colored, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
                     criterion = nn.MSELoss()
                     #print(z_prev.get_device())
                     #print(real.get_device())
@@ -181,7 +202,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eye_color, Gs,Zs,in_s,Noi
                     opt.noise_amp = opt.noise_amp_init*RMSE
                     z_prev = m_image(z_prev)
             else:
-                prev = functions.draw_concat(Gs,Zs,reals, crops, masks, eye, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                prev = functions.draw_concat(Gs,Zs,reals, crops, masks, eye_colored, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                 prev = m_image(prev)
 
             if opt.mode == 'paint_train':
@@ -193,22 +214,10 @@ def train_single_scale(netD,netG,reals, crops,  masks, eye_color, Gs,Zs,in_s,Noi
             else:
                 noise = opt.noise_amp*noise_+prev
 
-            if opt.resize:
-                max_patch_size = int(min(real.size()[2], real.size()[3],mask.size()[2]*1.25))
-                min_patch_size = int(max(mask.size()[2] * 0.75, 1))
-                patch_size = random.randint(min_patch_size, max_patch_size)
-                mask_in = nn.functional.interpolate(mask.clone(), size=patch_size) 
-                eye_in = nn.functional.interpolate(eye.clone(), size=patch_size)
-            else:
-                mask_in = mask.clone()
-                eye_in = eye.clone()
-
-            # if opt.random_eye:
-            #     eye_in = functions.generate_eye_mask(opt, mask_in)
-                
+            
 
             # Stacking masks and noise to make input
-            G_input = functions.make_input(noise, mask_in, eye_in)
+            G_input = functions.make_input(noise, mask_in, eye_colored)
             fake_background = netG(G_input.detach(),prev)
             
             import copy
@@ -252,6 +261,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eye_color, Gs,Zs,in_s,Noi
                 Z_opt = opt.noise_amp*z_opt+z_prev
                 input_opt = functions.make_input(Z_opt, mask_in, eye_in)
                 rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),real)
+                #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),fixed_crop)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
             else:

@@ -24,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--resize', action='store_true', help='enables random mask resize during training')
     parser.add_argument('--random_crop', action='store_true', help='enables random crop during training')
     parser.add_argument('--random_eye', action='store_true', help='enables random eye position during training')
+    parser.add_argument('--random_eye_color', action='store_true', help='enables random eye color during training')
     
     opt = parser.parse_args()
     opt = functions.post_config(opt)

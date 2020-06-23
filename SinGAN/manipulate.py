@@ -139,6 +139,13 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, NoiseAmp,opt,in_s=None,scale_v=1,
     for i in range(0,num_samples,1):
         
         eye = functions.generate_eye_mask(opt, masks[-1], 0) #generate eye in random location
+        eye_colored = eye.clone() 
+        if opt.random_eye_color:
+            eye_color = functions.get_eye_color(reals[-1])
+            opt.eye_color = eye_color
+            eye_colored[:, 0, :, :] *= (eye_color[0]/255)
+            eye_colored[:, 1, :, :] *= (eye_color[1]/255)
+            eye_colored[:, 2, :, :] *= (eye_color[2]/255)
         
         noise_ = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy], device=opt.device)
         
@@ -152,12 +159,12 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, NoiseAmp,opt,in_s=None,scale_v=1,
         noise_ = m_noise(noise_)
         
         
-        prev = functions.draw_concat(Gs,Zs,reals, crops, masks, eye, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+        prev = functions.draw_concat(Gs,Zs,reals, crops, masks, eye_colored, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
         prev = m_image(prev)
         
         noise = opt.noise_amp*noise_+prev
         
-        G_input = functions.make_input(noise, masks[-1], eye)
+        G_input = functions.make_input(noise, masks[-1], eye_colored)
         fake_background = Gs[-1](G_input.detach(),prev)
         
         border = False #TODO

@@ -196,11 +196,13 @@ def generate_eye_mask(opt, mask, level):
     eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
     eye[eye>0] = 1 
     
+    
     if not(opt.not_cuda):
         eye = move_to_gpu(eye)
         eye = eye.unsqueeze(0)
         
     eye = imresize_mask(eye,scale,opt)
+    
     return eye
 
         
@@ -237,9 +239,7 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, m
     eye_colored[:, 0, :, :] *= (eye_color[0]/255)
     eye_colored[:, 1, :, :] *= (eye_color[1]/255)
     eye_colored[:, 2, :, :] *= (eye_color[2]/255)
-    
-    
-    
+        
     # Shading border of mask
     shade = 0
     
@@ -284,8 +284,8 @@ def make_input(noise, mask, eye):
     noise_height, noise_width = noise.size()[2], noise.size()[3] 
     
     mask_in = pad_mask(mask, (noise_height, noise_width)).float() # Padding masks to make same size as input 
-    eye_in = pad_mask(eye[:, 0:1, :, :], (noise_height, noise_width)).float()
-    
+    #eye_in = pad_mask(eye[:, 0:1, :, :], (noise_height, noise_width)).float()
+    eye_in = pad_mask(eye[:, :, :, :], (noise_height, noise_width)).float()
     G_input = torch.cat((noise, mask_in, eye_in), dim=1) # concatenating to make input to generator
     
     return G_input                 
