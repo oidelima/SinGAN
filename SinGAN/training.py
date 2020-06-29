@@ -271,14 +271,14 @@ def train_single_scale(netD,netG,reals, crops,  masks, Gs,Zs,in_s,NoiseAmp,opt,c
                     plt.imsave('%s/z_prev.png' % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
                 Z_opt = opt.noise_amp*z_opt+z_prev
                 input_opt = functions.make_input(Z_opt, mask_in, opt)
-                #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),real)
+                rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),real)
                 mask_height, mask_width = mask_in.size()[2], mask_in.size()[3]
                 # print(mask_in)
                 # plt.imshow((netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in).cpu().detach().squeeze(), cmap="gray")
                 # plt.show()
                 # plt.imshow((fixed_crop[:, :, :mask_height, :mask_width]*mask_in).cpu().detach().squeeze(), cmap="gray")
                 # plt.show()
-                rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,real[:, :, :mask_height, :mask_width]*mask_in)
+                #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,real[:, :, :mask_height, :mask_width]*mask_in)
                 #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,fixed_crop[:, :, :mask_height, :mask_width]*mask_in)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
