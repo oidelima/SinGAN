@@ -6,6 +6,7 @@ import random
 
 
 if __name__ == '__main__':
+    import GPUtil
     parser = get_arguments()
     parser.add_argument('--run_name', help='name of experimental run', required=True)
     parser.add_argument('--input_dir', help='input image dir', default='Input/Images')
@@ -20,13 +21,13 @@ if __name__ == '__main__':
     # parser.add_argument('--eye_color', help='input eye color', default=(255, 255, 255))
     # parser.add_argument('--random_eye', action='store_true', help='enables random eye position during training')
     # parser.add_argument('--random_eye_color', action='store_true', help='enables random eye color during training')
-    parser.add_argument('--border_width',type=int, default=4)
+    parser.add_argument('--border_width',type=int, default=0)
     parser.add_argument('--shade_amt', type=float, default=0.0)
     parser.add_argument('--mode', help='task to be done', default='train')
     parser.add_argument('--resize', action='store_true', help='enables random mask resize during training')
     parser.add_argument('--random_crop', action='store_true', help='enables random crop during training')
     parser.add_argument('--batch_size',type=int, default=5)
-
+    
     
     opt = parser.parse_args()
     opt = functions.post_config(opt)
@@ -61,5 +62,5 @@ if __name__ == '__main__':
         #              (16, 60), (8, 51), (12, 30), (60, 29), (58, 45), (11, 21), (64, 66), (7, 67), 
         #              (27, 68), (52, 57), (7, 49), (29, 3), (15, 49)]
         SinGAN_generate(Gs,Zs,reals, crops, masks, NoiseAmp,opt, num_samples = opt.num_samples, mask_locs = None)
-        random_crop_generate(reals[-1], masks[-1], opt, num_samples = opt.num_samples, mask_locs = None)
+        random_crop_generate(reals[-1], masks[-1], crops[-1], opt, num_samples = opt.num_samples, mask_locs = None)
 

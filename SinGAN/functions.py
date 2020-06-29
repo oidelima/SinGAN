@@ -160,6 +160,8 @@ def random_crop(real, crop_size, opt):
     height = real.shape[2]
     width = real.shape[3]
     crop = torch.zeros((opt.batch_size, 3, crop_size, crop_size))
+    print(height)
+    print(crop_size)
      
     for i in range(opt.batch_size):                
         h_idx = np.random.randint(height - crop_size, size=1)
@@ -237,8 +239,7 @@ def gen_fake(real, fake_background, mask, opt, border = False, mask_loc = None):
             w_loc = np.random.randint(im_width - mask_width)
 
 
-        
-        
+    
         # eye_ind = torch.zeros((1, 3, im_height, im_width)) 
         # #coloring eye
         # eye_colored = eye.clone()

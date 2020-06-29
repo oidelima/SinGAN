@@ -87,15 +87,19 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     imageio.mimsave('%s/start_scale=%d/alpha=%f_beta=%f.gif' % (dir2save,start_scale,alpha,beta),images_cur,fps=fps)
     del images_cur
 
-def random_crop_generate(real, mask, opt, num_samples = 20, mask_locs = None):
+def random_crop_generate(real, mask, crop, opt, num_samples = 20, mask_locs = None):
     # eye = functions.generate_eye_mask(opt, mask, 0) #generate eye in random location
-    real_fullsize = real.clone()
+    real_fullsize = real.repeat(opt.batch_size, 1, 1, 1).clone()
+
     for i in range(num_samples):
-        fake_background, _, _ = functions.random_crop(real_fullsize.clone(), opt.crop_size, opt)
+        crop_size = crop.size()[2]
+        
         if opt.random_crop:
+            fake_background, _, _ = functions.random_crop(real_fullsize, opt.crop_size, opt)
             real, h_idx, w_idx = functions.random_crop(real_fullsize.clone(), opt.crop_size, opt)
         else:
             real = real_fullsize.clone()
+            fake_background = real_fullsize.clone()
 
         #mask_loc = mask_locs[i] if mask_locs else None
         I_curr, fake_ind = functions.gen_fake(real, fake_background, mask, opt, border = True, mask_loc = None)
@@ -135,6 +139,11 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, NoiseAmp,opt,in_s=None,scale_v=1,
     if in_s == None:
         in_s  = torch.full([opt.batch_size,opt.nc_z,opt.nzx,opt.nzy], 0, device=opt.device)
     
+    if not opt.random_crop:
+        real = reals[-1].repeat(opt.batch_size, 1, 1, 1).clone()
+    else:
+        real = reals[-1].clone()
+
     for i in range(0,num_samples,1):
         
         # eye = functions.generate_eye_mask(opt, masks[-1], 0) #generate eye in random location
@@ -170,7 +179,7 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, NoiseAmp,opt,in_s=None,scale_v=1,
         
         if opt.random_crop:
             crop_size =  crops[-1].size()[2]
-            crop, h_idx, w_idx = functions.random_crop(reals[-1], crop_size, opt)
+            crop, h_idx, w_idx = functions.random_crop(real, crop_size, opt)
             #I_curr, fake_ind = functions.gen_fake(crop, fake_background, masks[-1], opt, border, mask_loc = mask_locs[i])
             I_curr, fake_ind = functions.gen_fake(crop, fake_background, masks[-1], opt, border, mask_loc = None)
             full_fake = reals[-1].clone()
@@ -178,7 +187,7 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, NoiseAmp,opt,in_s=None,scale_v=1,
             full_mask = torch.zeros_like(full_fake)
             full_mask[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = fake_ind[:1, :, :, :]
         else:
-            I_curr, fake_ind = functions.gen_fake(reals[-1], fake_background, masks[-1], opt, border,  mask_loc = None)
+            I_curr, fake_ind = functions.gen_fake(real, fake_background, masks[-1], opt, border,  mask_loc = None)
             #I_curr, fake_ind = functions.gen_fake(reals[-1], fake_background, masks[-1], opt, border,  mask_loc = mask_locs[i])
         
         if opt.mode == 'train':
