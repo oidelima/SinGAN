@@ -4,8 +4,9 @@ var base = "http://127.0.0.1:8000/Output/RandomSamples/94547580-ivy-growing-on-t
 var runs = [["SinGAN, batch_size=16, changing crop for alpha loss","SinGAN/batch_16_all_gpus/"],
             ["SinGAN, batch_size=16, fixed crop for alpha loss","SinGAN/batch_16_fixed_crop_for_alpha/"], 
             ["SinGAN, batch_size=16, fixed crop for alpha loss (only mask)","SinGAN/batch_16_fixed_crop_only_mask_part_for_alpha/"],
-            ["SinGAN, batch_size=16, fullsized, fixed crop for alpha loss (only mask)","SinGAN/batch_16_fullsized/"],
             ["SinGAN, batch_size=16, fullsized, changing crop for alpha loss","SinGAN/alpha_not_fixed/"],
+            ["SinGAN, batch_size=16, fullsized, fixed crop for alpha loss (only mask)","SinGAN/batch_16_fullsized/"],
+            ["batch_16,cropped,eye,changing_alpha", "SinGAN/batch_16,eye,changing_alpha/"],
             ["Random Crop, batch_size=16, fullsized","random_crop/batch_16_fullsized/"],
             ["Random Crop, batch_size=16, cropped","random_crop/batch_16_all_gpus/"]]
 
