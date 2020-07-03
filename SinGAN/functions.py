@@ -292,8 +292,14 @@ def make_input(noise, mask, eye, opt):
     mask = mask.repeat(opt.batch_size, 1, 1, 1)
     mask = pad_mask(mask, (noise_height, noise_width)).float() # Padding masks to make same size as input 
     # eye_in = pad_mask(eye[:, 0:1, :, :], (noise_height, noise_width)).float()
-    eye_in = pad_mask(eye[:, 0:1, :, :], (noise_height, noise_width)).float().repeat(opt.batch_size, 1, 1, 1)
-    G_input = torch.cat((noise, mask, eye_in), dim=1) # concatenating to make input to generator
+    eye_in = pad_mask(eye[:, :, :, :], (noise_height, noise_width)).float().repeat(opt.batch_size, 1, 1, 1)
+    
+    eye_colored = eye_in.clone()
+    eye_colored[:, 0, :, :] *= (opt.eye_color[0]/255)
+    eye_colored[:, 1, :, :] *= (opt.eye_color[1]/255)
+    eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
+
+    G_input = torch.cat((noise, mask, eye_colored), dim=1) # concatenating to make input to generator
     return G_input                 
 
 def preprocess_mask(im, opt):

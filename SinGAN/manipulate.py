@@ -101,6 +101,9 @@ def random_crop_generate(real, mask, eye, crop, opt, num_samples = 20, mask_locs
             real = real_fullsize.clone()
             fake_background = real_fullsize.clone()
 
+        if opt.random_eye_color:
+            opt.eye_color = functions.get_eye_color(real)
+
         #mask_loc = mask_locs[i] if mask_locs else None
         I_curr, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask, eye, opt.eye_color, opt, border = True, mask_loc = None)
         if opt.random_crop:
@@ -147,7 +150,9 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
     for i in range(0,num_samples,1):
         
         eye = functions.generate_eye_mask(opt, masks[-1], 0).to(opt.device) #generate eye in random location
-        #eye_color = functions.get_eye_color(reals[-1])
+
+        if opt.random_eye_color:
+            opt.eye_color = functions.get_eye_color(reals[-1])
         # eye_colored = eye.clone() 
         # if opt.random_eye_color:
         #     eye_color = functions.get_eye_color(reals[-1])

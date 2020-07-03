@@ -6,7 +6,6 @@ import random
 
 
 if __name__ == '__main__':
-    import GPUtil
     parser = get_arguments()
     parser.add_argument('--run_name', help='name of experimental run', required=True)
     parser.add_argument('--input_dir', help='input image dir', default='Input/Images')

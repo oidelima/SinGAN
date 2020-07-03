@@ -13,8 +13,6 @@ from SinGAN.imresize import imresize
 
 
 def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
-    # import GPUtil
-    # GPUtil.showUtilization() 
 
     real_ = functions.read_image(opt)
     real = imresize(real_,opt.scale1,opt)
@@ -148,12 +146,10 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             mask_in = mask.clone()
             eye_in = eye.clone()
                         
-        # eye_colored = eye_in.clone() 
-        # if opt.random_eye_color:
-        #     eye_color = functions.get_eye_color(real)
-        #     eye_colored[:, 0, :, :] *= (eye_color[0]/255)
-        #     eye_colored[:, 1, :, :] *= (eye_color[1]/255)
-        #     eye_colored[:, 2, :, :] *= (eye_color[2]/255)
+        eye_colored = eye_in.clone() 
+        
+        if opt.random_eye_color:
+            opt.eye_color = functions.get_eye_color(real)
                 
         if (Gs == []) & (opt.mode != 'SR_train'):
             z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device, num_samp=opt.batch_size)
@@ -394,7 +390,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[4,5,6,7,8,9])
+    netG = nn.DataParallel(netG,device_ids=[1,2,3,4,5,6,7,8,9])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -402,7 +398,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[4,5,6,7,8,9])
+    netD = nn.DataParallel(netD,device_ids=[1,2,3,4,5,6,7,8,9])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))
