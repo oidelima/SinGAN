@@ -19,6 +19,7 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
     
     mask_ = functions.read_mask(opt) 
     crop_ = torch.zeros((1,1,opt.crop_size, opt.crop_size)) #Used just for size reference when downsizing
+    crop_ = imresize(crop_,opt.scale1,opt)
     eye_ = functions.generate_eye_mask(opt, mask_, 0)
     eye_color = functions.get_eye_color(real)
     opt.eye_color = eye_color
@@ -89,6 +90,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
     real_fullsize = reals[len(Gs)]
     crop_size =  crops[len(Gs)].size()[2]
     fixed_crop = real_fullsize[:,:,0:crop_size,0:crop_size].repeat(opt.batch_size, 1, 1, 1)
+    plt.imsave('%s/fixed_alpha_crop.png' %  (opt.outf), functions.convert_image_np(fixed_crop[0:1, :, :, :].detach()))
     
     if opt.random_crop:
         real, _, _ = functions.random_crop(real_fullsize.clone(), crop_size, opt)
@@ -390,7 +392,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[4,6,7])
+    netG = nn.DataParallel(netG,device_ids=[7,8,9])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -398,7 +400,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[4,6,7])
+    netD = nn.DataParallel(netD,device_ids=[7,8,9])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))

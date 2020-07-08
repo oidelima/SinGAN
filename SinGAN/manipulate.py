@@ -95,8 +95,8 @@ def random_crop_generate(real, mask, eye, crop, opt, num_samples = 20, mask_locs
         crop_size = crop.size()[2]
         
         if opt.random_crop:
-            fake_background, _, _ = functions.random_crop(real_fullsize, opt.crop_size, opt)
-            real, h_idx, w_idx = functions.random_crop(real_fullsize.clone(), opt.crop_size, opt)
+            fake_background, _, _ = functions.random_crop(real_fullsize, crop_size, opt)
+            real, h_idx, w_idx = functions.random_crop(real_fullsize.clone(), crop_size, opt)
         else:
             real = real_fullsize.clone()
             fake_background = real_fullsize.clone()
@@ -108,9 +108,9 @@ def random_crop_generate(real, mask, eye, crop, opt, num_samples = 20, mask_locs
         I_curr, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask, eye, opt.eye_color, opt, border = True, mask_loc = None)
         if opt.random_crop:
             full_fake = real_fullsize.clone()
-            full_fake[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = I_curr[-1:, :, :, :]
+            full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr[0:1, :, :, :]
             full_mask = torch.zeros_like(full_fake)
-            full_mask[:, :, h_idx:h_idx+opt.crop_size, w_idx:w_idx+opt.crop_size] = fake_ind[-1:, : ,:, :]
+            full_mask[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = fake_ind[0:1, : ,:, :]
         
         dir2save = '%s/RandomSamples/%s/random_crop/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
         try:
