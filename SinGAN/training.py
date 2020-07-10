@@ -12,7 +12,7 @@ import random
 from SinGAN.imresize import imresize
 
 
-def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
+def train(opt,Gs,Zs,reals, crops, masks, constraints, NoiseAmp):
 
     real_ = functions.read_image(opt)
     real = imresize(real_,opt.scale1,opt)
@@ -20,18 +20,22 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
     mask_ = functions.read_mask(opt) 
     crop_ = torch.zeros((1,1,opt.crop_size, opt.crop_size)) #Used just for size reference when downsizing
     crop_ = imresize(crop_,opt.scale1,opt)
-    eye_ = functions.generate_eye_mask(opt, mask_, 0)
-    eye_color = functions.get_eye_color(real)
-    opt.eye_color = eye_color
+    
+    # eye_ = functions.generate_eye_mask(opt, mask_, 0)
+    # eye_color = functions.get_eye_color(real)
+    # opt.eye_color = eye_color
+    
+    constraint = functions.read_mask(opt, "Input/custom_constraints", "bird.gif") 
+    
+    mask_source = functions.read_image(opt, "Input/mask_sources", "202984001.jpg")
+    mask_source = nn.functional.interpolate(mask_source, size=(opt.patch_size, opt.patch_size))
+    constraint_ = constraint * mask_ * mask_source
     
     in_s = 0
     scale_num = 0
     reals = functions.create_pyramid(real,reals, opt)
     masks = functions.create_pyramid(mask_,masks,opt, mode = "mask")
-    eyes = functions.create_pyramid(eye_,eyes,opt, mode = "mask")
-    #GPUtil.showUtilization()
-    
-
+    constraints = functions.create_pyramid(constraint_, constraints,opt)
   
     # Shortcut to get sizes of corresponding crops for each scale
     crops =  functions.create_pyramid(crop_,crops, opt, mode="mask")
@@ -59,7 +63,7 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
             D_curr.load_state_dict(torch.load('%s/%d/netD.pth' % (opt.out_,scale_num-1)))
 
         
-        z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals, crops, masks, eyes, Gs,Zs,in_s,NoiseAmp,opt)
+        z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals, crops, masks, constraints, Gs,Zs,in_s,NoiseAmp,opt)
         torch.cuda.empty_cache()
 
         G_curr = functions.reset_grads(G_curr,False)
@@ -84,7 +88,7 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
 
 
 
-def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp,opt,centers=None):
+def train_single_scale(netD,netG,reals, crops,  masks, constraints, Gs,Zs,in_s,NoiseAmp,opt,centers=None):
     
     
     real_fullsize = reals[len(Gs)]
@@ -98,8 +102,8 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
         real = real_fullsize.clone()  
         real = real.repeat(opt.batch_size, 1, 1, 1)
         
-    mask = masks[len(Gs)]
-    eye = eyes[len(Gs)]
+    mask = masks[len(Gs)].clone()
+    constraint = constraints[len(Gs)].clone()
     #eye = functions.generate_eye_mask(opt, masks[-1], opt.stop_scale - len(Gs))
     
     opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer) width 
@@ -134,7 +138,6 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
     
     
     
-    
     for epoch in range(opt.niter):
         
         
@@ -142,16 +145,13 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             max_patch_size = int(min(real.size()[2], real.size()[3],mask.size()[2]*1.25))
             min_patch_size = int(max(mask.size()[2] * 0.75, 1))
             patch_size = random.randint(min_patch_size, max_patch_size)
-            mask_in = nn.functional.interpolate(mask.clone(), size=patch_size) 
-            eye_in = nn.functional.interpolate(eye.clone(), size=patch_size)
-        else:
-            mask_in = mask.clone()
-            eye_in = eye.clone()
+            mask = nn.functional.interpolate(mask.clone(), size=patch_size) 
+            constraint = nn.functional.interpolate(constraint.clone(), size=patch_size)
                         
-        eye_colored = eye_in.clone() 
+        # eye_colored = eye_in.clone() 
         
-        if opt.random_eye_color:
-            opt.eye_color = functions.get_eye_color(real)
+        # if opt.random_eye_color:
+        #     opt.eye_color = functions.get_eye_color(real)
                 
         if (Gs == []) & (opt.mode != 'SR_train'):
             z_opt = functions.generate_noise([1,opt.nzx,opt.nzy], device=opt.device, num_samp=opt.batch_size)
@@ -193,9 +193,9 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
                     z_prev = m_image(z_prev)
                     prev = z_prev
                 else:
-                    prev = functions.draw_concat(Gs,Zs,reals, crops, masks,eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                    prev = functions.draw_concat(Gs,Zs,reals, crops, masks,constraints, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                     prev = m_image(prev)
-                    z_prev = functions.draw_concat(Gs,Zs,reals, crops, masks,eyes, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
+                    z_prev = functions.draw_concat(Gs,Zs,reals, crops, masks,constraints, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
                     criterion = nn.MSELoss()
                     #print(z_prev.get_device())
                     #print(real.get_device())
@@ -203,7 +203,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
                     opt.noise_amp = opt.noise_amp_init*RMSE
                     z_prev = m_image(z_prev)
             else:
-                prev = functions.draw_concat(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                prev = functions.draw_concat(Gs,Zs,reals, crops, masks, constraints, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                 prev = m_image(prev)
 
             if opt.mode == 'paint_train':
@@ -218,7 +218,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             
 
             # Stacking masks and noise to make input
-            G_input = functions.make_input(noise, mask_in, eye_in, opt)               
+            G_input = functions.make_input(noise, mask, constraint, opt)               
             fake_background = netG(G_input.detach(),prev)
 
             # plt.imsave('eye_mask.png', functions.convert_image_np(G_input[0:1, 4:5, :, :].detach()))
@@ -231,7 +231,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
               
             # Cropping mask shape from generated image and putting on top of real image at random location
             #fake, fake_ind = functions.gen_fake(real, fake_background, mask_in, opt)
-            fake, fake_ind, eye_ind = functions.gen_fake(real, fake_background, mask_in, eye_in, opt.eye_color, opt)
+            fake, fake_ind, constraint_ind = functions.gen_fake(real, fake_background, mask, constraint, opt)
 
             # plt.imshow(fake[1, :, :, :].cpu().permute(1,2,0).detach().squeeze(), cmap="gray")
             # plt.show()
@@ -278,16 +278,16 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
                     z_prev = functions.quant2centers(z_prev, centers)
                     plt.imsave('%s/z_prev.png' % (opt.outf), functions.convert_image_np(z_prev), vmin=0, vmax=1)
                 Z_opt = opt.noise_amp*z_opt+z_prev
-                input_opt = functions.make_input(Z_opt, mask_in, eye_in, opt)
+                input_opt = functions.make_input(Z_opt, mask, constraint, opt)
                 #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),real)
-                mask_height, mask_width = mask_in.size()[2], mask_in.size()[3]
+                mask_height, mask_width = mask.size()[2], mask.size()[3]
                 # print(mask_in)
                 # plt.imshow((netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in).cpu().detach().squeeze(), cmap="gray")
                 # plt.show()
                 # plt.imshow((fixed_crop[:, :, :mask_height, :mask_width]*mask_in).cpu().detach().squeeze(), cmap="gray")
                 # plt.show()
                 #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,real[:, :, :mask_height, :mask_width]*mask_in)
-                rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,fixed_crop[:, :, :mask_height, :mask_width]*mask_in)
+                rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask,fixed_crop[:, :, :mask_height, :mask_width]*mask)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
             else:
@@ -307,7 +307,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
         if epoch % 500 == 0 or epoch == (opt.niter-1):
             plt.imsave('%s/fake_sample.png' %  (opt.outf), functions.convert_image_np(fake[0:1, :, :, :].detach()))
             plt.imsave('%s/fake_indicator.png' %  (opt.outf), functions.convert_image_np(fake_ind[0:1, :, :, :].detach()))
-            plt.imsave('%s/eye_indicator.png' %  (opt.outf), functions.convert_image_np(eye_ind.detach()))
+            plt.imsave('%s/constraint_indicator.png' %  (opt.outf), functions.convert_image_np(constraint_ind.detach()))
             plt.imsave('%s/background.png' %  (opt.outf), functions.convert_image_np(fake_background[0:1, :, :, :].detach()))
             #plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(input_opt.detach(), z_prev).detach()))
             #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
@@ -325,8 +325,8 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
         
         if opt.random_crop:
             real, _, _ = functions.random_crop(real_fullsize, crop_size, opt)  #randomly find crop in image
-        if opt.random_eye:
-            eye = functions.generate_eye_mask(opt, masks[-1], opt.stop_scale - len(Gs)).to(opt.device)
+        # if opt.random_eye:
+        #     eye = functions.generate_eye_mask(opt, masks[-1], opt.stop_scale - len(Gs)).to(opt.device)
         
         # del real, fake_background,fake
         # torch.cuda.empty_cache()
@@ -392,7 +392,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[7,8,9])
+    #netG = nn.DataParallel(netG,device_ids=[7,8,9])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -400,7 +400,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[7,8,9])
+    #netD = nn.DataParallel(netD,device_ids=[7,8,9])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))
