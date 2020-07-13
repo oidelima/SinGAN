@@ -1,18 +1,35 @@
 const NUM_SAMPLES = 20
-var base = "http://127.0.0.1:8000/Output/RandomSamples/94547580-ivy-growing-on-the-forest-floor/"
+var base = "http://127.0.0.1:8000/Output/RandomSamples/"
 
-var runs = [["SinGAN, batch_size=16, changing crop for alpha loss","SinGAN/batch_16_all_gpus/"],
-            ["SinGAN, batch_size=16, fixed crop for alpha loss","SinGAN/batch_16_fixed_crop_for_alpha/"], 
-            ["SinGAN, batch_size=16, fixed crop for alpha loss (only mask)","SinGAN/batch_16_fixed_crop_only_mask_part_for_alpha/"],
-            ["SinGAN, batch_size=16, fullsized, changing crop for alpha loss","SinGAN/alpha_not_fixed/"],
-            ["SinGAN, batch_size=16, fullsized, fixed crop for alpha loss (only mask)","SinGAN/batch_16_fullsized/"],
-            ["batch_16,cropped,eye,changing_alpha", "SinGAN/batch_16,eye,changing_alpha/"],
-            ["Random Crop, batch_size=16, fullsized","random_crop/batch_16_fullsized/"],
-            ["Random Crop, batch_size=16, cropped","random_crop/batch_16_all_gpus/"]]
+var runs = [["ivy, batch 16","94547580-ivy-growing-on-the-forest-floor/SinGAN/batch_16,alpha_fixed/"],
+            ["ivy, batch 8","94547580-ivy-growing-on-the-forest-floor/SinGAN/batch_8/"],
+            ["Ocean-floor","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/batch_8/"],
+            ["coral yellow", "2081085051/SinGAN/test/"],
+            ["bilde", "bilde_t_1/SinGAN/batch_8/"],
+            ["coral_1", "coral_1/SinGAN/batch_8/"],
+            ["desert", "dan-woje-desertmix-surfacev2/SinGAN/test/"],
+            ["forest_1", "forest-floor-ivy-mud-1340969/SinGAN/batch_8,butterfly/"],
+            ["forest_2", "ForestFloorDemo.0010-min-1920x1080-b51e92beb9b22acb25ba6a0508fcc7ea/SinGAN/batch_8/"],
+            ["walden", "walden-brush2-view1/SinGAN/test/"],
+            ["walden_log", "walen-log-view1/SinGAN/batch_8/"],
+            ["woodchips", "woodchips-4-3/SinGAN/batch_8,frog/"],
+
+            ["ivy, batch 16","94547580-ivy-growing-on-the-forest-floor/random_crop/batch_16,alpha_fixed/"],
+            ["Ocean-floor","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/random_crop/batch_8/"],
+            ["coral yellow", "2081085051/random_crop/test/"],
+            ["bilde", "bilde_t_1/random_crop/batch_8/"],
+            ["coral_1", "coral_1/random_crop/batch_8/"],
+            ["desert", "dan-woje-desertmix-surfacev2/random_crop/test/"],
+            ["forest_1", "forest-floor-ivy-mud-1340969/random_crop/batch_8,butterfly/"],
+            ["forest_2", "ForestFloorDemo.0010-min-1920x1080-b51e92beb9b22acb25ba6a0508fcc7ea/random_crop/batch_8/"],
+            ["walden", "walden-brush2-view1/random_crop/test/"],
+            ["walden_log", "walen-log-view1/random_crop/batch_8/"],
+            ["woodchips", "woodchips-4-3/random_crop/batch_8,frog/"]
+        ]
 
 var curr_img = 0;
 var left_run = 0;
-var right_run = 6;
+var right_run = 12;
 var image_type = "fake";
 
 

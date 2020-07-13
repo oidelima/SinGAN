@@ -225,7 +225,7 @@ def read_mask(opt, mask_dir=None, mask_name=None):
 #         except:
 #             pass
 
-def gen_fake(real, fake_background, mask, constraint, opt, border = False, mask_loc = None):
+def gen_fake(real, fake_background, mask, constraint, mask_source, opt, border = False, mask_loc = None):
        
     # Cropping mask shape from generated image and putting on top of real image at random location
     im_height, im_width = real.size()[2], real.size()[3] 
@@ -270,8 +270,10 @@ def gen_fake(real, fake_background, mask, constraint, opt, border = False, mask_
         #     shade = (border_mask * shade_amt)
 
         # overaying shape and eye mask on image
-        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask)*abs(constraint-1)\
+
+        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width]*(mask)*abs(constraint-1)\
                                                                         + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1)\
+                                                                        + constraint.to(opt.device)*mask_source
                                                                         #+eye_colored.to(opt.device) #- shade
         
 

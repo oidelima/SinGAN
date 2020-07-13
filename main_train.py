@@ -36,6 +36,7 @@ if __name__ == '__main__':
     masks = []
     crops = []
     constraints = []
+    mask_sources = []
     NoiseAmp = []
     dir2save = functions.generate_dir2save(opt)
     
@@ -51,7 +52,7 @@ if __name__ == '__main__':
         if opt.random_crop:
             real, _ , _ = functions.random_crop(real, opt.crop_size, opt) 
         functions.adjust_scales2image(real, opt)
-        train(opt, Gs, Zs, reals, crops, masks, constraints, NoiseAmp)
+        train(opt, Gs, Zs, reals, crops, masks, constraints, mask_sources, NoiseAmp)
         
         # if opt.random_crop:
         #     im_height, im_width = crops[-1].size()[2], crops[-1].size()[3]
@@ -61,6 +62,6 @@ if __name__ == '__main__':
         # mask_locs = [(27, 45), (47, 59), (69, 28), (44, 55), (15, 35), (44, 40), (67, 26), 
         #              (16, 60), (8, 51), (12, 30), (60, 29), (58, 45), (11, 21), (64, 66), (7, 67), 
         #              (27, 68), (52, 57), (7, 49), (29, 3), (15, 49)]
-        SinGAN_generate(Gs,Zs,reals, crops, masks, constraints, NoiseAmp,opt, num_samples = opt.num_samples, mask_locs = None)
-        random_crop_generate(reals[-1], masks[-1], constraints[-1], crops[-1], opt, num_samples = opt.num_samples, mask_locs = None)
+        SinGAN_generate(Gs,Zs,reals, crops, masks, constraints, mask_sources, NoiseAmp,opt, num_samples = opt.num_samples, mask_locs = None)
+        random_crop_generate(reals[-1], masks[-1], constraints[-1], mask_sources[-1], crops[-1], opt, num_samples = opt.num_samples, mask_locs = None)
 
