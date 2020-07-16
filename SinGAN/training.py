@@ -309,12 +309,13 @@ def train_single_scale(netD,netG,reals, crops,  masks, constraints, mask_sources
             print('scale %d:[%d/%d]' % (len(Gs), epoch, opt.niter))
 
         if epoch % 500 == 0 or epoch == (opt.niter-1):
-            plt.imsave('%s/fake_sample.png' %  (opt.outf), functions.convert_image_np(fake[0:1, :, :, :].detach()))
+            #plt.imsave('%s/fake_sample.png' %  (opt.outf), functions.convert_image_np(fake[0:1, :, :, :].detach()))
             plt.imsave('%s/fake_indicator.png' %  (opt.outf), functions.convert_image_np(fake_ind[0:1, :, :, :].detach()))
             plt.imsave('%s/constraint_indicator.png' %  (opt.outf), functions.convert_image_np(constraint_ind.detach()))
             plt.imsave('%s/background.png' %  (opt.outf), functions.convert_image_np(fake_background[0:1, :, :, :].detach()))
             plt.imsave('%s/fake_discriminator_heat_map_%s.png' %  (opt.outf, epoch), functions.convert_image_np(output[0:1, :, :, :].detach()), cmap='gray')
             plt.imsave('%s/real_discriminator_heat_map_%s.png' %  (opt.outf, epoch), functions.convert_image_np(real_output[0:1, :, :, :].detach()), cmap='gray')
+            plt.imsave('%s/fake_sample_%s.png' %  (opt.outf, epoch), functions.convert_image_np(fake[0:1, :, :, :].detach()))
             #plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(input_opt.detach(), z_prev).detach()))
             #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
             #plt.imsave('%s/D_real.png'   % (opt.outf), functions.convert_image_np(D_real_map))
@@ -398,7 +399,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[7,8,9])
+    netG = nn.DataParallel(netG,device_ids=[4,5,6])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -406,7 +407,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[7,8,9])
+    netD = nn.DataParallel(netD,device_ids=[4,5,6])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))
