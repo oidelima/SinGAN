@@ -25,6 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', help='task to be done', default='train')
     parser.add_argument('--resize', action='store_true', help='enables random mask resize during training')
     parser.add_argument('--random_crop', action='store_true', help='enables random crop during training')
+    parser.add_argument('--upweight', action='store_true', help='enables random crop during training')
     parser.add_argument('--batch_size',type=int, default=5)
     
     

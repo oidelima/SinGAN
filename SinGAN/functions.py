@@ -233,6 +233,7 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt, border =
     
     fake = real.clone()
     fake_ind = torch.zeros((opt.batch_size, 3, im_height, im_width))
+    fake_mask = torch.zeros((opt.batch_size, 1, im_height, im_width))
 
     for i in range(opt.batch_size):
         
@@ -278,10 +279,11 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt, border =
         
 
         
-        fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,0:mask_height ,0:mask_width] *(mask)# - shade
+        fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  (mask)*fake_background[i,:,0:mask_height ,0:mask_width] # - shade
+        fake_mask[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  (mask)#*fake_background[i,:,0:mask_height ,0:mask_width] # - shade
         constraint_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = constraint
                                            
-    return fake, fake_ind, constraint_ind
+    return fake, fake_ind, constraint_ind, fake_mask.to(opt.device)
  
 # def get_eye_color(real):
 #     height, width = real.size()[2], real.size()[3]

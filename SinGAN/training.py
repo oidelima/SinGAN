@@ -138,9 +138,9 @@ def train_single_scale(netD,netG,reals, crops,  masks, constraints, mask_sources
     D_real2plot = []
     D_fake2plot = []
     z_opt2plot = []
-    
-    
-    
+
+    #calculate loss multiplier for fake pixels
+
     for epoch in range(opt.niter):
         
         
@@ -235,7 +235,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, constraints, mask_sources
               
             # Cropping mask shape from generated image and putting on top of real image at random location
             #fake, fake_ind = functions.gen_fake(real, fake_background, mask_in, opt)
-            fake, fake_ind, constraint_ind = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
+            fake, fake_ind, constraint_ind, fake_mask = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
 
             # plt.imshow(fake[1, :, :, :].cpu().permute(1,2,0).detach().squeeze(), cmap="gray")
             # plt.show()
@@ -253,6 +253,21 @@ def train_single_scale(netD,netG,reals, crops,  masks, constraints, mask_sources
             
                                                                                                                                                                    
             output = netD(fake.detach())
+
+            if opt.upweight:
+                mask_down = nn.functional.interpolate(fake_mask, size=(output.size()[2], output.size()[3]))
+                num_pix = output.size()[0] * output.size()[1] * output.size()[2] * output.size()[3] * 2 # x 2 to account for 'real' batch
+                num_fake = torch.sum(1 - mask_down) 
+                num_real = num_pix - num_fake
+                mult = num_real / num_fake
+                mask_mult = ((1-mask_down) + mask_down*mult) 
+                # plt.imsave('mask_mult.png', mask_mult[0,-1,:,:].detach().cpu().numpy())
+                # plt.imsave('output0.png', mask_mult[1,-1,:,:].detach().cpu().numpy())
+                # plt.imsave('output1.png', mask_mult[2,-1,:,:].detach().cpu().numpy())
+                output = output * mask_mult
+
+                
+            
             errD_fake = output.mean()
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
@@ -313,8 +328,8 @@ def train_single_scale(netD,netG,reals, crops,  masks, constraints, mask_sources
             plt.imsave('%s/fake_indicator.png' %  (opt.outf), functions.convert_image_np(fake_ind[0:1, :, :, :].detach()))
             plt.imsave('%s/constraint_indicator.png' %  (opt.outf), functions.convert_image_np(constraint_ind.detach()))
             plt.imsave('%s/background.png' %  (opt.outf), functions.convert_image_np(fake_background[0:1, :, :, :].detach()))
-            plt.imsave('%s/fake_discriminator_heat_map_%s.png' %  (opt.outf, epoch), functions.convert_image_np(output[0:1, :, :, :].detach()), cmap='gray')
-            plt.imsave('%s/real_discriminator_heat_map_%s.png' %  (opt.outf, epoch), functions.convert_image_np(real_output[0:1, :, :, :].detach()), cmap='gray')
+            plt.imsave('%s/fake_discriminator_heat_map_%s.png' %  (opt.outf, epoch), output[0, -1, :, :].detach().cpu().numpy())
+            plt.imsave('%s/real_discriminator_heat_map_%s.png' %  (opt.outf, epoch), real_output[0, -1, :, :].detach().cpu().numpy())
             plt.imsave('%s/fake_sample_%s.png' %  (opt.outf, epoch), functions.convert_image_np(fake[0:1, :, :, :].detach()))
             #plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(input_opt.detach(), z_prev).detach()))
             #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
