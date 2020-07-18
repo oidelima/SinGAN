@@ -255,7 +255,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, constraints, mask_sources
             output = netD(fake.detach())
 
             if opt.upweight:
-                mask_down = nn.functional.interpolate(fake_mask, size=(output.size()[2], output.size()[3]))
+                mask_down = nn.functional.interpolate(constraint_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
                 num_pix = output.size()[0] * output.size()[1] * output.size()[2] * output.size()[3] * 2 # x 2 to account for 'real' batch
                 num_fake = torch.sum(1 - mask_down) 
                 num_real = num_pix - num_fake
@@ -264,6 +264,12 @@ def train_single_scale(netD,netG,reals, crops,  masks, constraints, mask_sources
                 # plt.imsave('mask_mult.png', mask_mult[0,-1,:,:].detach().cpu().numpy())
                 # plt.imsave('output0.png', mask_mult[1,-1,:,:].detach().cpu().numpy())
                 # plt.imsave('output1.png', mask_mult[2,-1,:,:].detach().cpu().numpy())
+                # plt.imsave('output0.png', mask_mult[1,-1,:,:].detach().cpu().numpy())
+                # plt.imsave('output1.png', mask_mult[2,-1,:,:].detach().cpu().numpy())
+                # print(output.size())
+                # print(mask_mult.size())
+                # print(mask_mult[0, :, :, :].sum())
+                # print(mask_mult[1, :, :, :].sum())
                 output = output * mask_mult
 
                 
@@ -414,7 +420,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[4,5,6])
+    netG = nn.DataParallel(netG,device_ids=[6,7,8,9])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -422,7 +428,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[4,5,6])
+    netD = nn.DataParallel(netD,device_ids=[6,7,8,9])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))

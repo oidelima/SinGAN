@@ -30,12 +30,16 @@ class WDiscriminator(nn.Module):
             N = int(opt.nfc/pow(2,(i+1)))
             block = ConvBlock(max(2*N,opt.min_nfc),max(N,opt.min_nfc),opt.ker_size,opt.padd_size,1)
             self.body.add_module('block%d'%(i+1),block)
-        self.tail = nn.Conv2d(max(N,opt.min_nfc),1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)
+        self.tail = nn.Conv2d(max(N,opt.min_nfc),1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)#stride used to be 1
+        # self.tail2 = nn.Conv2d(1,1,kernel_size=10,stride=10,padding=opt.padd_size)#stride used to be 1
 
     def forward(self,x):
         x = self.head(x)
         x = self.body(x)
         x = self.tail(x)
+        # x = self.tail2(x)
+        # m = nn.AvgPool2d(10, stride=10)
+        # x = m(x)
         return x
 
 
@@ -51,9 +55,10 @@ class GeneratorConcatSkip2CleanAdd(nn.Module):
             block = ConvBlock(max(2*N,opt.min_nfc),max(N,opt.min_nfc),opt.ker_size,opt.padd_size,1)
             self.body.add_module('block%d'%(i+1),block)
         self.tail = nn.Sequential(
-            nn.Conv2d(max(N,opt.min_nfc),opt.nc_im,kernel_size=opt.ker_size,stride =1,padding=opt.padd_size),
+            nn.Conv2d(max(N,opt.min_nfc),opt.nc_im,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size),
             nn.Tanh()
         )
+
     def forward(self,x,y):
         x = self.head(x)
         x = self.body(x)
