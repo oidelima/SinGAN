@@ -269,7 +269,7 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, m
         
         fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,0:mask_height ,0:mask_width] *(mask) - shade
         mask_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  (mask)
-        eye_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye_colored
+        eye_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye
                                            
     return fake, fake_ind, eye_ind, mask_ind
  

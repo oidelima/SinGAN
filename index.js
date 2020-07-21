@@ -1,14 +1,17 @@
 const NUM_SAMPLES = 20
-var base = "http://127.0.0.1:8000/Output/RandomSamples/94547580-ivy-growing-on-the-forest-floor/"
+var base = "http://127.0.0.1:8000/Output/RandomSamples/"
 
-var runs = [["SinGAN, batch_size=16, changing crop for alpha loss","SinGAN/batch_16_all_gpus/"],
-            ["SinGAN, batch_size=16, fixed crop for alpha loss","SinGAN/batch_16_fixed_crop_for_alpha/"], 
-            ["SinGAN, batch_size=16, fixed crop for alpha loss (only mask)","SinGAN/batch_16_fixed_crop_only_mask_part_for_alpha/"],
-            ["SinGAN, batch_size=16, fullsized, changing crop for alpha loss","SinGAN/alpha_not_fixed/"],
-            ["SinGAN, batch_size=16, fullsized, fixed crop for alpha loss (only mask)","SinGAN/batch_16_fullsized/"],
-            ["batch_16,cropped,eye,changing_alpha", "SinGAN/batch_16,eye,changing_alpha/"],
-            ["Random Crop, batch_size=16, fullsized","random_crop/batch_16_fullsized/"],
-            ["Random Crop, batch_size=16, cropped","random_crop/batch_16_all_gpus/"]]
+var runs = [["Extra layer (stride = 10)","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/discriminator_extra_layer/"],
+            ["Extra layer (stride = 5)","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/extra_layer,stride_5/"], 
+            ["Loss upweighted x 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/test,mult_1_00/"],
+            ["Loss upweighted x 1.3828","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/test,mult_1_3828/"],
+            ["Bird, extra layer (stride=20)","dan-woje-desertmix-surfacev2/SinGAN/test_avgpooling_2/"],
+            ["Bird, average pooling ","dan-woje-desertmix-surfacev2/SinGAN/test_avgpooling/"],
+
+            ["Random crop","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/random_crop/discriminator_extra_layer/"],
+            ["Random crop","dan-woje-desertmix-surfacev2/random_crop/test_avgpooling/"]];
+
+
 
 var curr_img = 0;
 var left_run = 0;

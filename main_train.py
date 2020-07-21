@@ -1,3 +1,5 @@
+import time
+
 from config import get_arguments
 from SinGAN.manipulate import *
 from SinGAN.training import *
