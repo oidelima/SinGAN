@@ -31,15 +31,15 @@ class WDiscriminator(nn.Module):
             block = ConvBlock(max(2*N,opt.min_nfc),max(N,opt.min_nfc),opt.ker_size,opt.padd_size,1)
             self.body.add_module('block%d'%(i+1),block)
         self.tail = nn.Conv2d(max(N,opt.min_nfc),1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)
-        # self.tail2 = nn.Conv2d(1,1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)
-        # self.tail3 = nn.Conv2d(1,1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)
+        self.tail2 = nn.Conv2d(1,1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)
+        self.tail3 = nn.Conv2d(1,1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)
         # self.tail2 = nn.Conv2d(1,1,kernel_size=5,stride=5,padding=opt.padd_size)
 
     def forward(self,x):
         x = self.head(x)
         x = self.body(x)
         x = self.tail(x)
-        # x = self.tail2(x)
+        x = self.tail2(x)
         # x = self.tail3(x)
         return x
 
@@ -49,7 +49,7 @@ class GeneratorConcatSkip2CleanAdd(nn.Module):
         super(GeneratorConcatSkip2CleanAdd, self).__init__()
         self.is_cuda = torch.cuda.is_available()
         N = opt.nfc
-        self.head = ConvBlock(opt.nc_im + 4,N,opt.ker_size,opt.padd_size,1) # +1 comes from shape mask
+        self.head = ConvBlock(opt.nc_im,N,opt.ker_size,opt.padd_size,1) # +1 comes from shape mask
         self.body = nn.Sequential()
         for i in range(opt.num_layer-2):
             N = int(opt.nfc/pow(2,(i+1)))

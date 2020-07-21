@@ -127,7 +127,7 @@ def move_to_cpu(t):
     t = t.to(torch.device('cpu'))
     return t
 
-def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, mask_mult, device):
+def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
     #print real_data.size()
     alpha = torch.rand(1, 1)
     alpha = alpha.expand(real_data.size())
@@ -139,7 +139,7 @@ def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, mask_mult, device)
     interpolates = interpolates.to(device)#.cuda()
     interpolates = torch.autograd.Variable(interpolates, requires_grad=True)
 
-    disc_interpolates = netD(interpolates)*mask_mult
+    disc_interpolates = netD(interpolates)
 
 
     gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
@@ -198,6 +198,8 @@ def generate_eye_mask(opt, mask, level):
     eye = Image.new('RGB', (mask.size()[2], mask.size()[3]))
     draw = ImageDraw.Draw(eye)
     eye_loc = find_valid_eye_location(opt, eye_diam, mask)
+    eye_loc = (85, 133) #TODO
+
     draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
     eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
     eye[eye>0] = 1 
@@ -301,8 +303,10 @@ def make_input(noise, mask, eye, opt):
     eye_colored[:, 0, :, :] *= (opt.eye_color[0]/255)
     eye_colored[:, 1, :, :] *= (opt.eye_color[1]/255)
     eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
+    # plt.imsave('eye_test', eye_colored[0, -1, :, :].detach().cpu().numpy())
 
     G_input = torch.cat((noise, mask, eye_colored), dim=1) # concatenating to make input to generator
+    G_input = noise
     return G_input                 
 
 def preprocess_mask(im, opt):
