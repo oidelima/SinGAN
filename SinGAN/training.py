@@ -106,6 +106,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
     opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer) width 
     opt.nzy = real.shape[3]#+(opt.ker_size-1)*(opt.num_layer) height
     opt.receptive_field = opt.ker_size + ((opt.ker_size-1)*(opt.num_layer-1))*opt.stride
+    print("Receptive field =", opt.receptive_field)
     pad_noise = int(((opt.ker_size - 1) * opt.num_layer) / 2)
     pad_image = int(((opt.ker_size - 1) * opt.num_layer) / 2)
     if opt.mode == 'animation_train':
@@ -254,20 +255,19 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             output = netD(fake.detach())
 
             if opt.upweight:
-                mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
-                # const_down = nn.functional.interpolate(eye_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
-
-
-                num_pix = output.size()[0] * output.size()[1] * output.size()[2] * output.size()[3] * 2 # x 2 to account for 'real' batch
-                num_fake = torch.sum(mask_down) 
-                # num_const_fake = torch.sum(const_down) 
-                # const_mult = num_fake/num_const_fake if num_const_fake != 0 else 0
-                num_real = num_pix - num_fake
-                mult = num_real / num_fake
-                mult = 1.3
+                # mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
+                const_down = nn.functional.interpolate(eye_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
+                # num_pix = output.size()[0] * output.size()[1] * output.size()[2] * output.size()[3] * 2 # x 2 to account for 'real' batch
+                # num_fake = torch.sum(mask_down) 
+                # # num_const_fake = torch.sum(const_down) 
+                # # const_mult = num_fake/num_const_fake if num_const_fake != 0 else 0
+                # num_real = num_pix - num_fake
+                # mult = num_real / num_fake
+                mult = 0.8
                # mask_mult = ((1-mask_down) + mask_down*mult)
 
-                mask_mult = ((1-mask_down) + mask_down*mult)# + const_mult*const_down)  
+                # mask_mult = ((1-mask_down) + mask_down*mult)# + const_mult*const_down)
+                mask_mult =  ((1-const_down) + const_down*mult)
                 # plt.imsave('mask_mult.png', mask_mult[0,-1,:,:].detach().cpu().numpy())
                 # plt.imsave('output0.png', mask_mult[1,-1,:,:].detach().cpu().numpy())
                 # plt.imsave('output1.png', mask_mult[2,-1,:,:].detach().cpu().numpy())
@@ -450,7 +450,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[0])
+    netG = nn.DataParallel(netG,device_ids=[7])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -458,7 +458,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[0])
+    netD = nn.DataParallel(netD,device_ids=[7])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))

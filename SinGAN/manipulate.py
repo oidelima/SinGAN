@@ -151,7 +151,8 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
 
     for i in range(0,num_samples,1):
         
-        # eye = functions.generate_eye_mask(opt, masks[-1], 0).to(opt.device) #generate eye in random location
+        if opt.random_eye:
+            eye = functions.generate_eye_mask(opt, masks[-1], 0).to(opt.device) #generate eye in random location
 
         if opt.random_eye_color:
             opt.eye_color = functions.get_eye_color(reals[-1])
