@@ -1,21 +1,32 @@
 const NUM_SAMPLES = 20
 var base = "http://127.0.0.1:8000/Output/RandomSamples/"
 
-var runs = [["Extra layer (stride = 10)","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/discriminator_extra_layer/"],
-            ["Extra layer (stride = 5)","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/extra_layer,stride_5/"], 
-            ["Loss upweighted x 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/test,mult_1_00/"],
-            ["Loss upweighted x 1.3828","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/test,mult_1_3828/"],
-            ["Bird, extra layer (stride=20)","dan-woje-desertmix-surfacev2/SinGAN/test_avgpooling_2/"],
-            ["Bird, average pooling ","dan-woje-desertmix-surfacev2/SinGAN/test_avgpooling/"],
+// var runs = [["Extra layer (stride = 10)","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/discriminator_extra_layer/"],
+//             ["Extra layer (stride = 5)","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/extra_layer,stride_5/"], 
+//             ["Loss upweighted x 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/test,mult_1_00/"],
+//             ["Loss upweighted x 1.3828","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/test,mult_1_3828/"],
+//             ["Bird, extra layer (stride=20)","dan-woje-desertmix-surfacev2/SinGAN/test_avgpooling_2/"],
+//             ["Bird, average pooling ","dan-woje-desertmix-surfacev2/SinGAN/test_avgpooling/"],
 
-            ["Random crop","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/random_crop/discriminator_extra_layer/"],
-            ["Random crop","dan-woje-desertmix-surfacev2/random_crop/test_avgpooling/"]];
+//             ["Random crop","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/random_crop/discriminator_extra_layer/"],
+//             ["Random crop","dan-woje-desertmix-surfacev2/random_crop/test_avgpooling/"]];
+
+var runs = [["Normal network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,normal_network,input_only_noise/"],
+            ["Extra layer (with stride = 1, kernel_size = 3) in discriminator network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,one_extra_layers,input_only_noise/"],
+            ["Two extra layers (with stride = 1, kernel_size = 3) in discriminator network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,two_extra_layers,input_only_noise/"],
+            ["Extra layer (with stride = 5, kernel_size = 5) in discriminator network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,final_layer_stride_5/"],
+            ["Extra layer (with stride = 10, kernel_size = 10) in discriminator network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,stride_10/"],
+
+            
+
+            ["Random crop","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/random_crop/fixed_eye,one_extra_layers,input_only_noise/"]
+        ];
 
 
 
 var curr_img = 0;
 var left_run = 0;
-var right_run = 6;
+var right_run = 5;
 var image_type = "fake";
 
 

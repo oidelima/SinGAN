@@ -254,8 +254,10 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
 
             output = netD(fake.detach())
 
+            mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
+
             if opt.upweight:
-                # mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
+                mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
                 const_down = nn.functional.interpolate(eye_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
                 # num_pix = output.size()[0] * output.size()[1] * output.size()[2] * output.size()[3] * 2 # x 2 to account for 'real' batch
                 # num_fake = torch.sum(mask_down) 
@@ -263,7 +265,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
                 # # const_mult = num_fake/num_const_fake if num_const_fake != 0 else 0
                 # num_real = num_pix - num_fake
                 # mult = num_real / num_fake
-                mult = 0.8
+                mult = 1.0
                # mask_mult = ((1-mask_down) + mask_down*mult)
 
                 # mask_mult = ((1-mask_down) + mask_down*mult)# + const_mult*const_down)
@@ -283,7 +285,9 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             
             
               
-            errD_fake = output.mean()
+            # errD_fake = output.mean()
+            errD_fake = (output*mask_down).mean() - (output*(1-mask_down)).mean()
+            print(errD_fake)
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
@@ -303,9 +307,12 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
 
             netG.zero_grad()
             output = netD(fake)
+
             if opt.upweight: output = output*mask_mult
             #D_fake_map = output.detach()
-            errG = -output.mean()
+            # errG = -output.mean()
+            errG = -(output*mask_down).mean()
+            print(errG)
             errG.backward(retain_graph=True)
             if alpha!=0:
                 loss = nn.MSELoss()
@@ -450,7 +457,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[7])
+    netG = nn.DataParallel(netG,device_ids=[0])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -458,7 +465,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[7])
+    netD = nn.DataParallel(netD,device_ids=[0])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))
