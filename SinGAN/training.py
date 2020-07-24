@@ -105,8 +105,11 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
     
     opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer) width 
     opt.nzy = real.shape[3]#+(opt.ker_size-1)*(opt.num_layer) height
-    opt.receptive_field = opt.ker_size + ((opt.ker_size-1)*(opt.num_layer-1))*opt.stride
-    print("Receptive field =", opt.receptive_field)
+    opt.receptive_field = opt.ker_size + ((opt.ker_size-1)*(opt.num_layer-1))*opt.stride 
+    #3, 5, 7, 9, (11, 13, 15)
+    #5, 7, 9, 11, 13, 15
+    #10, 12, 14, 16, 18, 20
+
     pad_noise = int(((opt.ker_size - 1) * opt.num_layer) / 2)
     pad_image = int(((opt.ker_size - 1) * opt.num_layer) / 2)
     if opt.mode == 'animation_train':
@@ -256,38 +259,41 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
 
             mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
 
-            if opt.upweight:
-                mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
-                const_down = nn.functional.interpolate(eye_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
-                # num_pix = output.size()[0] * output.size()[1] * output.size()[2] * output.size()[3] * 2 # x 2 to account for 'real' batch
-                # num_fake = torch.sum(mask_down) 
-                # # num_const_fake = torch.sum(const_down) 
-                # # const_mult = num_fake/num_const_fake if num_const_fake != 0 else 0
-                # num_real = num_pix - num_fake
-                # mult = num_real / num_fake
-                mult = 1.0
-               # mask_mult = ((1-mask_down) + mask_down*mult)
+            # if opt.upweight:
+            #     mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
+            #     const_down = nn.functional.interpolate(eye_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
+            #     # num_pix = output.size()[0] * output.size()[1] * output.size()[2] * output.size()[3] * 2 # x 2 to account for 'real' batch
+            #     # num_fake = torch.sum(mask_down) 
+            #     # # num_const_fake = torch.sum(const_down) 
+            #     # # const_mult = num_fake/num_const_fake if num_const_fake != 0 else 0
+            #     # num_real = num_pix - num_fake
+            #     # mult = num_real / num_fake
+            #     mult = 1.0
+            #    # mask_mult = ((1-mask_down) + mask_down*mult)
 
-                # mask_mult = ((1-mask_down) + mask_down*mult)# + const_mult*const_down)
-                mask_mult =  ((1-const_down) + const_down*mult)
-                # plt.imsave('mask_mult.png', mask_mult[0,-1,:,:].detach().cpu().numpy())
-                # plt.imsave('output0.png', mask_mult[1,-1,:,:].detach().cpu().numpy())
-                # plt.imsave('output1.png', mask_mult[2,-1,:,:].detach().cpu().numpy())
-                # plt.imsave('output0.png', mask_mult[1,-1,:,:].detach().cpu().numpy())
-                # plt.imsave('output1.png', mask_mult[2,-1,:,:].detach().cpu().numpy())
-                # print(output.size())
-                # print(mask_mult.size())
-                # print(mask_mult[0, :, :, :].sum())
-                # print(mask_mult[1, :, :, :].sum())
-                output = output * mask_mult
+            #     # mask_mult = ((1-mask_down) + mask_down*mult)# + const_mult*const_down)
+            #     mask_mult =  ((1-const_down) + const_down*mult)
+            #     # plt.imsave('mask_mult.png', mask_mult[0,-1,:,:].detach().cpu().numpy())
+            #     # plt.imsave('output0.png', mask_mult[1,-1,:,:].detach().cpu().numpy())
+            #     # plt.imsave('output1.png', mask_mult[2,-1,:,:].detach().cpu().numpy())
+            #     # plt.imsave('output0.png', mask_mult[1,-1,:,:].detach().cpu().numpy())
+            #     # plt.imsave('output1.png', mask_mult[2,-1,:,:].detach().cpu().numpy())
+            #     # print(output.size())
+            #     # print(mask_mult.size())
+            #     # print(mask_mult[0, :, :, :].sum())
+            #     # print(mask_mult[1, :, :, :].sum())
+            #     output = output * mask_mult
 
             
             
             
               
             # errD_fake = output.mean()
-            errD_fake = (output*mask_down).mean() - (output*(1-mask_down)).mean()
-            print(errD_fake)
+            num_fake = torch.sum(mask_down)
+            num_pix = output.size()[0] * output.size()[1] * output.size()[2] * output.size()[3] * 2
+            num_real = num_pix - num_fake
+            mult = num_real / num_fake
+            errD_fake = mult*(output*mask_down).sum()/mask_down.sum() - (output*(1-mask_down)).sum()/(1-mask_down).sum()
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
@@ -311,8 +317,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             if opt.upweight: output = output*mask_mult
             #D_fake_map = output.detach()
             # errG = -output.mean()
-            errG = -(output*mask_down).mean()
-            print(errG)
+            errG = -mult*(output*mask_down).sum()/mask_down.sum() #+ (output*(1-mask_down)).mean()
             errG.backward(retain_graph=True)
             if alpha!=0:
                 loss = nn.MSELoss()
@@ -372,7 +377,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
 
 
  
-            # plt.imsave('%s/mask_down_%s.png' %  (opt.outf, epoch), mask_down[0, -1, :, :].detach().cpu().numpy())
+            plt.imsave('%s/mask_down_%s.png' %  (opt.outf, epoch), mask_down[0, -1, :, :].detach().cpu().numpy())
             # plt.imsave('%s/mask_mult_%s.png' %  (opt.outf, epoch), mask_mult[0, -1, :, :].detach().cpu().numpy())
             #plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(input_opt.detach(), z_prev).detach()))
             #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
