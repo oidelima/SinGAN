@@ -233,6 +233,12 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, m
     fake = real.clone()
     fake_ind = torch.zeros((opt.batch_size, 3, im_height, im_width))
     mask_ind = torch.zeros((opt.batch_size, 1, im_height, im_width))
+    eye_ind = torch.zeros((opt.batch_size, 3, im_height, im_width))
+
+    eye_colored = eye.clone()
+    eye_colored[:, 0, :, :] *= (eye_color[0]/255)
+    eye_colored[:, 1, :, :] *= (eye_color[1]/255)
+    eye_colored[:, 2, :, :] *= (eye_color[2]/255)
 
     for i in range(opt.batch_size):
         
@@ -244,13 +250,12 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, m
             w_loc = np.random.randint(im_width - mask_width)
 
 
-    
-        eye_ind = torch.zeros((1, 3, im_height, im_width)) 
+        
+
+         
         #coloring eye
-        eye_colored = eye.clone()
-        eye_colored[:, 0, :, :] *= (eye_color[0]/255)
-        eye_colored[:, 1, :, :] *= (eye_color[1]/255)
-        eye_colored[:, 2, :, :] *= (eye_color[2]/255)
+        
+        # plt.imsave('eye_colored.png' , convert_image_np(eye[0:1, :, :, :].detach()))
             
         # Shading border of mask
         shade = 0
@@ -264,15 +269,19 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, m
         #     shade = (border_mask * shade_amt)
 
         # overaying shape and eye mask on image
-        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask)*abs(eye-1)\
-                                                                        + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1)\
-                                                                        +eye_colored.to(opt.device) - shade
+        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask) + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1)#*abs(eye-1)\
+                                            
+                                                                        #+eye_colored.to(opt.device)*opt.eye_rho + fake_background[i,:,0:mask_height ,0:mask_width]* eye *(1 - opt.eye_rho) - shade
         
 
         
         fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,0:mask_height ,0:mask_width] *(mask) - shade
-        mask_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  (mask)
-        eye_ind[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye
+        mask_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  mask
+        eye_ind[i,0,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye[0, 0, :, :]
+        eye_ind[i,1,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye[0, 1, :, :]
+        eye_ind[i,2,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye[0, 2, :, :]
+        
+        
                                            
     return fake, fake_ind, eye_ind, mask_ind
  
