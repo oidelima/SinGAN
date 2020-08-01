@@ -352,8 +352,8 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
                 # plt.show()
                 # plt.imshow((fixed_crop[:, :, :mask_height, :mask_width]*mask_in).cpu().detach().squeeze(), cmap="gray")
                 # plt.show()
-                #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,real[:, :, :mask_height, :mask_width]*mask_in)
-                rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,fixed_crop[:, :, :mask_height, :mask_width]*mask_in)
+                rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,real[:, :, :mask_height, :mask_width]*mask_in)
+                #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,fixed_crop[:, :, :mask_height, :mask_width]*mask_in)
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
             else:
@@ -488,7 +488,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[4, 5, 7, 8, 9])
+    netG = nn.DataParallel(netG,device_ids=[0,4, 5])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -496,7 +496,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[4, 5, 7, 8, 9])
+    netD = nn.DataParallel(netD,device_ids=[0,4, 5])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))
