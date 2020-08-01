@@ -23,6 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--random_eye_color', action='store_true', help='enables random eye color during training')
     parser.add_argument('--border_width',type=int, default=0)
     parser.add_argument('--shade_amt', type=float, default=0.0)
+    parser.add_argument('--mask_epsilon', type=float, default=0.01)
     parser.add_argument('--mode', help='task to be done', default='train')
     parser.add_argument('--resize', action='store_true', help='enables random mask resize during training')
     parser.add_argument('--random_crop', action='store_true', help='enables random crop during training')

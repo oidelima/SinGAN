@@ -9,6 +9,7 @@ import cv2
 import torch
 
 
+
 def denorm(x):
     out = (x + 1) / 2
     return out.clamp(0, 1)
@@ -73,8 +74,14 @@ def batch_imresize(im,scale,opt):
 def imresize_mask(im,scale,opt):
     
     im = torch2uint8_mask(im)
+    # im = numpy.array(Image.fromarray(im).resize())
+
+    # im = cv2.resize(img, dsize=(54, 140), interpolation=cv2.INTER_CUBIC)
     im = imresize_in(im, scale_factor=scale)
-    im = im.round()
+ 
+    # im[im>0.1] = 1
+    # im[im<=0.1] = 0
+    # im = im.round()
     im = im[:,:,:,None]
     im = im.transpose((3, 2, 0, 1))
     im = torch.from_numpy(im).double()

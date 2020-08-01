@@ -33,7 +33,7 @@ class WDiscriminator(nn.Module):
         self.tail = nn.Conv2d(max(N,opt.min_nfc),1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)
         # self.tail2 = nn.Conv2d(1,1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)
         # self.tail3 = nn.Conv2d(1,1,kernel_size=opt.ker_size,stride=1,padding=opt.padd_size)
-        self.tail2 = nn.Conv2d(1,1,kernel_size=5,stride=5,padding=opt.padd_size)
+        # self.tail2 = nn.Conv2d(1,1,kernel_size=5,stride=5,padding=opt.padd_size)
 
     def forward(self,x):
         x = self.head(x)

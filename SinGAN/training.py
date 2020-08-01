@@ -22,7 +22,7 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
     crop_ = imresize(crop_,opt.scale1,opt)
     eye_ = functions.generate_eye_mask(opt, mask_, 0)
     eye_color = functions.get_eye_color(real)
-    eye_color = [27.8079, 52.9035, 66.9945]
+    eye_color = [241, 238, 240]
     
     # eye_color = [255, 255, 255]
     opt.eye_color = eye_color
@@ -33,6 +33,18 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
     masks = functions.create_pyramid(mask_,masks,opt, mode = "mask")
     eyes = functions.create_pyramid(eye_,eyes,opt, mode = "mask")
     #GPUtil.showUtilization()
+
+    # plt.imshow(masks[-1].cpu().detach().squeeze(), cmap="gray")
+    # plt.show()
+    # plt.imshow(masks[-2].cpu().detach().squeeze(), cmap="gray")
+    # plt.show()
+    # plt.imshow(masks[1].cpu().detach().squeeze(), cmap="gray")
+    # plt.show()
+    # masks[1] = functions.make_binary(masks[1], opt)
+    # # im[im<=0.1] = 0
+    # plt.imshow(masks[1].cpu().detach().squeeze(), cmap="gray")
+    # plt.show()
+    # ds
     
     opt.eye_rho = 0
 
@@ -142,8 +154,10 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
     
     
     
-    
-    for epoch in range(opt.niter):
+    # niter=1 if len(Gs) < 5 else 5000
+    niter=5000
+    # for epoch in range(opt.niter):
+    for epoch in range(niter):
         
         # opt.eye_rho += 1/18000
         opt.eye_rho = 1
@@ -235,6 +249,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             G_input = functions.make_input(noise, mask_in, eye_in, opt)               
             fake_background = netG(G_input.detach(),prev)
 
+
             # plt.imsave('eye_mask.png', functions.convert_image_np(G_input[0:1, 4:5, :, :].detach()))
             # plt.imsave('fake_ind.png', functions.convert_image_np(G_input[0:1, 3:4, :, :].detach()))
             # plt.imsave('noise.png', functions.convert_image_np(G_input[0:1, 0:3, :, :].detach()))
@@ -265,8 +280,26 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             
 
             output = netD(fake.detach())
+ 
+            # eye_ind = functions.make_binary(eye_ind, opt)
 
-            mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
+            # zeros = torch.zeros_like(eye_ind)
+            weights = torch.ones(1, 1, opt.receptive_field, opt.receptive_field)/opt.receptive_field
+
+
+            mask_down = nn.functional.conv2d(mask_ind, weights).to(opt.device)
+            const_down = nn.functional.conv2d(eye_ind[:,0:1,:,:], weights).to(opt.device)
+            
+
+
+
+            
+
+            # mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
+            # print(mask_down.size())
+            # const_down = nn.functional.interpolate(eye_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
+            # print(const_down.size())
+            
 
             # if opt.upweight:
             #     mask_down = nn.functional.interpolate(mask_ind.to(opt.device), size=(output.size()[2], output.size()[3]))
@@ -302,7 +335,10 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             # num_pix = output.size()[0] * output.size()[1] * output.size()[2] * output.size()[3] *2
             # num_real = num_pix - num_fake
             # mult = num_real / num_fake
-            errD_fake = (output*mask_down).sum()/mask_down.sum() - (output*(1-mask_down)).sum()/(1-mask_down).sum()
+            # if len(Gs) < 2:
+            #     errD_fake = (output*mask_down).sum()/mask_down.sum() - (output*(1-mask_down)).sum()/(1-mask_down).sum()
+            
+            errD_fake = (output*const_down).sum()/const_down.sum()+(output*mask_down).sum()/mask_down.sum()
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
@@ -323,6 +359,10 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
 
             netG.zero_grad()
             output = netD(fake)
+            # print(output.size())
+            # print(fake.size())
+            # print(mask_in.size())
+            # print(real.size())
 
             if opt.upweight: output = output*mask_mult
             #D_fake_map = output.detach()
@@ -334,9 +374,14 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             
 
             # print(fake*eye_ind.to(opt.device))
-            L1_eye_loss = 0.3*abs(fake*eye_ind.to(opt.device) - eye_colored) #*(1*len(Gs))
+            # L1_eye_loss = 0.3*abs(fake*eye_ind.to(opt.device) - eye_colored) #*(1*len(Gs))
             # errG = -output.mean() 
-            errG = -(output*mask_down).sum()/mask_down.sum() + L1_eye_loss.sum()#+ (output*(1-mask_down)).mean()
+            # errG = -(output*mask_down).sum()/mask_down.sum() + L1_eye_loss.sum()#+ (output*(1-mask_down)).mean()
+            # eye_output = output*const_down
+            # diff = output*(1-const_down)
+
+            errG = -(output*const_down).sum()/const_down.sum() - (output*mask_down).sum()/mask_down.sum()
+                
             errG.backward(retain_graph=True)
             if alpha!=0:
                 loss = nn.MSELoss()
@@ -373,7 +418,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
 
         if epoch % 250 == 0 or epoch == (opt.niter-1):
 
-            fake_with_mask = (fake*(1-eye_ind.to(opt.device)) + eye_colored)
+            # fake_with_mask = (fake*(1-eye_ind.to(opt.device)) + eye_colored)
 
 
             plt.imsave('%s/fake_sample_%s.png' %  (opt.outf, epoch), functions.convert_image_np(fake[0:1, :, :, :].detach()))
@@ -382,8 +427,10 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             plt.imsave('%s/background_%s.png' %  (opt.outf, epoch ), functions.convert_image_np(fake_background[0:1, :, :, :].detach()))
             plt.imsave('%s/fake_discriminator_heat_map_%s.png' %  (opt.outf, epoch), output[0, -1, :, :].detach().cpu().numpy())
             plt.imsave('%s/real_discriminator_heat_map_%s.png' %  (opt.outf, epoch), real_output[0, -1, :, :].detach().cpu().numpy())
-            plt.imsave('%s/fake_with_eye%s.png' %  (opt.outf, epoch), functions.convert_image_np(fake_with_mask[0:1, :, :, :].detach()))
-            
+            # plt.imsave('%s/eye_output_%s.png' %  (opt.outf, epoch), eye_output[0, -1, :, :].detach().cpu().numpy())
+            # plt.imsave('%s/diff_%s.png' %  (opt.outf, epoch), diff[0, -1, :, :].detach().cpu().numpy())
+            # plt.imsave('%s/fake_with_eye%s.png' %  (opt.outf, epoch), functions.convert_image_np(fake_with_mask[0:1, :, :, :].detach()))
+     
 
             plt.plot(errD2plot)
             plt.savefig('%s/errD.png' %  (opt.outf))
@@ -403,7 +450,8 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
 
 
  
-            # plt.imsave('%s/mask_down_%s.png' %  (opt.outf, epoch), mask_down[0, -1, :, :].detach().cpu().numpy())
+            plt.imsave('%s/mask_down_%s.png' %  (opt.outf, epoch), mask_down[0, -1, :, :].detach().cpu().numpy(), cmap="gray")
+            plt.imsave('%s/const_down_%s.png' %  (opt.outf, epoch), const_down[0, -1, :, :].detach().cpu().numpy(), cmap="gray")
             # plt.imsave('%s/mask_mult_%s.png' %  (opt.outf, epoch), mask_mult[0, -1, :, :].detach().cpu().numpy())
             #plt.imsave('%s/G(z_opt).png'    % (opt.outf),  functions.convert_image_np(netG(input_opt.detach(), z_prev).detach()))
             #plt.imsave('%s/D_fake.png'   % (opt.outf), functions.convert_image_np(D_fake_map))
@@ -488,7 +536,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[4, 5, 7, 8, 9])
+    netG = nn.DataParallel(netG,device_ids=[0])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -496,7 +544,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[4, 5, 7, 8, 9])
+    netD = nn.DataParallel(netD,device_ids=[0])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))

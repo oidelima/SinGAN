@@ -32,6 +32,11 @@ def norm(x):
     out = (x -0.5) *2
     return out.clamp(-1, 1)
 
+def make_binary(mask, opt):
+    mask[mask>opt.mask_epsilon] = 1
+    mask[mask<=opt.mask_epsilon] = 0
+    return mask
+
 #def denorm2image(I1,I2):
 #    out = (I1-I1.mean())/(I1.max()-I1.min())
 #    out = out*(I2.max()-I2.min())+I2.mean()
@@ -269,17 +274,15 @@ def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, m
         #     shade = (border_mask * shade_amt)
 
         # overaying shape and eye mask on image
-        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask) + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1)#*abs(eye-1)\
-                                            
-                                                                        #+eye_colored.to(opt.device)*opt.eye_rho + fake_background[i,:,0:mask_height ,0:mask_width]* eye *(1 - opt.eye_rho) - shade
+        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask)*abs(eye-1) + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1)\
+                                                                        +eye_colored.to(opt.device) #*opt.eye_rho + fake_background[i,:,0:mask_height ,0:mask_width]* eye *(1 - opt.eye_rho) - shade
         
 
         
         fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,0:mask_height ,0:mask_width] *(mask) - shade
         mask_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  mask
-        eye_ind[i,0,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye[0, 0, :, :]
-        eye_ind[i,1,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye[0, 1, :, :]
-        eye_ind[i,2,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye[0, 2, :, :]
+        eye_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye[0, :, :, :]
+
         
         
                                            
@@ -314,7 +317,7 @@ def make_input(noise, mask, eye, opt):
     eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
     # plt.imsave('eye_test', eye_colored[0, -1, :, :].detach().cpu().numpy())
 
-    G_input = torch.cat((noise, mask, eye_colored), dim=1) # concatenating to make input to generator
+    #G_input = torch.cat((noise, mask, eye_colored), dim=1) # concatenating to make input to generator
     G_input = noise
     return G_input                 
 
