@@ -155,8 +155,9 @@ def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
     gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * LAMBDA
     return gradient_penalty
 
-def read_image(opt):
-    x = img.imread('%s/%s' % (opt.input_dir,opt.input_name))
+def read_image(opt, input_dir=None, input_name=None):
+    if input_dir and input_name: x = img.imread('%s/%s' % (input_dir,input_name))
+    else: x = img.imread('%s/%s' % (opt.input_dir,opt.input_name))
     x = np2torch(x,opt)
     x = x[:,0:3,:,:]
     return x
@@ -179,9 +180,10 @@ def random_crop(real, crop_size, opt):
 
     return crop.to(opt.device), int(h_idx_), int(w_idx_)
 
-def read_mask(opt):
+def read_mask(opt, mask_dir=None, mask_name=None):
     #x = img.imread('%s/%s' % (opt.mask_dir,opt.mask_name))
-    x = Image.open('%s/%s' % (opt.mask_dir,opt.mask_name))
+    if mask_dir and mask_name: x = Image.open('%s/%s' % (mask_dir,mask_name))
+    else: x = Image.open('%s/%s' % (opt.mask_dir,opt.mask_name))
     x = np.array(x)
     x = preprocess_mask(x, opt) 
     x = x[:,:,None,None]
@@ -193,107 +195,79 @@ def read_mask(opt):
     #x = x.type(torch.FloatTensor)
     return x
 
-def generate_eye_mask(opt, mask, level):
+# def generate_eye_mask(opt, mask, level):
     
-    scale = math.pow(opt.scale_factor, level)
+#     scale = math.pow(opt.scale_factor, level)
     
-    im_height, im_width = mask.size()[2], mask.size()[3]
-    # Make eye constraint mask
-    eye_diam = opt.eye_diam
-    eye = Image.new('RGB', (mask.size()[2], mask.size()[3]))
-    draw = ImageDraw.Draw(eye)
-    eye_loc = find_valid_eye_location(opt, eye_diam, mask)
-    eye_loc = (85, 133) #TODO
+#     im_height, im_width = mask.size()[2], mask.size()[3]
+#     # Make eye constraint mask
+#     eye_diam = opt.eye_diam
+#     eye = Image.new('RGB', (mask.size()[2], mask.size()[3]))
+#     draw = ImageDraw.Draw(eye)
+#     eye_loc = find_valid_eye_location(opt, eye_diam, mask)
+#     eye_loc = (85, 133) #TODO
 
-    draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
-    eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
-    eye[eye>0] = 1 
+#     draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
+#     eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
+#     eye[eye>0] = 1 
     
     
-    if not(opt.not_cuda):
-        eye = move_to_gpu(eye)
-        eye = eye.unsqueeze(0)
+#     if not(opt.not_cuda):
+#         eye = move_to_gpu(eye)
+#         eye = eye.unsqueeze(0)
         
-    eye = imresize_mask(eye,scale,opt)
+#     eye = imresize_mask(eye,scale,opt)
     
-    return eye
+#     return eye
 
         
-def find_valid_eye_location(opt, eye_diam, mask):
+# def find_valid_eye_location(opt, eye_diam, mask):
 
-    while True:
-        try:
-            loc = (random.randint(0, mask.size()[2]), random.randint(0, mask.size()[3]))   
-            if mask[:, :, loc[0], loc[1]] == 1 and mask[:, :, loc[0] + eye_diam, loc[1] + eye_diam] == 1:
-                return loc
-        except:
-            pass
+#     while True:
+#         try:
+#             loc = (random.randint(0, mask.size()[2]), random.randint(0, mask.size()[3]))   
+#             if mask[:, :, loc[0], loc[1]] == 1 and mask[:, :, loc[0] + eye_diam, loc[1] + eye_diam] == 1:
+#                 return loc
+#         except:
+#             pass
 
-def gen_fake(real, fake_background, mask, eye, eye_color, opt, border = False, mask_loc = None):
+def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
        
-    # Cropping mask shape from generated image and putting on top of real image at random location
     im_height, im_width = real.size()[2], real.size()[3] 
     mask_height, mask_width = mask.size()[2], mask.size()[3] 
     
     fake = real.clone()
     fake_ind = torch.zeros((opt.batch_size, 3, im_height, im_width))
     mask_ind = torch.zeros((opt.batch_size, 1, im_height, im_width))
-    eye_ind = torch.zeros((opt.batch_size, 3, im_height, im_width))
+    constraint_ind = torch.zeros((opt.batch_size, 3, im_height, im_width))
 
-    eye_colored = eye.clone()
-    eye_colored[:, 0, :, :] *= (eye_color[0]/255)
-    eye_colored[:, 1, :, :] *= (eye_color[1]/255)
-    eye_colored[:, 2, :, :] *= (eye_color[2]/255)
 
     for i in range(opt.batch_size):
         
-        if mask_loc:
-            h_loc, w_loc = mask_loc
-            ds
-        else:  
-            h_loc = np.random.randint(im_height - mask_height)
-            w_loc = np.random.randint(im_width - mask_width)
-
+        
+        h_loc = np.random.randint(im_height - mask_height)
+        w_loc = np.random.randint(im_width - mask_width)
 
         
-
-         
-        #coloring eye
+        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask)*(1-constraint) \
+                                                                            + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
+                                                                            + constraint.to(opt.device)*mask_source 
         
-        # plt.imsave('eye_colored.png' , convert_image_np(eye[0:1, :, :, :].detach()))
-            
-        # Shading border of mask
-        shade = 0
-        
-        # if border:
-        #     border_width = opt.border_width
-        #     shade_amt = opt.shade_amt
-        #     shrunken_mask = torch.from_numpy(scipy.ndimage.morphology.binary_erosion(mask[0, 0, :, :].cpu(), iterations=border_width)).type(torch.float64).to(opt.device)
-        #     shrunken_mask = shrunken_mask[None, None, :, :]
-        #     border_mask = mask - shrunken_mask
-        #     shade = (border_mask * shade_amt)
-
-        # overaying shape and eye mask on image
-        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask)*abs(eye-1) + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*abs(mask-1)\
-                                                                        +eye_colored.to(opt.device) #*opt.eye_rho + fake_background[i,:,0:mask_height ,0:mask_width]* eye *(1 - opt.eye_rho) - shade
-        
-
-        
-        fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,0:mask_height ,0:mask_width] *(mask) - shade
-        mask_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  mask
-        eye_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = eye[0, :, :, :]
-
-        
-        
-                                           
-    return fake, fake_ind, eye_ind, mask_ind
  
-def get_eye_color(real):
-    height, width = real.size()[2], real.size()[3]
-    eye_color_loc = (random.randint(0, height-1), random.randint(0, width-1))
-    eye_color =  real[0, :, eye_color_loc[0], eye_color_loc[1]]
-    eye_color = 255*denorm(eye_color)
-    return eye_color
+        fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,0:mask_height ,0:mask_width] *(mask) 
+        mask_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  mask
+        constraint_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = constraint
+
+        
+            
+    return fake, fake_ind, constraint_ind, mask_ind
+ 
+# def get_eye_color(real):
+#     height, width = real.size()[2], real.size()[3]
+#     eye_color_loc = (random.randint(0, height-1), random.randint(0, width-1))
+#     eye_color =  real[0, :, eye_color_loc[0], eye_color_loc[1]]
+#     eye_color = 255*denorm(eye_color)
+#     return eye_color
     
                                                                                 
 def pad_mask(mask, input_size):
@@ -304,22 +278,22 @@ def pad_mask(mask, input_size):
     mask = torch.nn.functional.pad(mask, p2d, "constant", 0)
     return mask
 
-def make_input(noise, mask, eye, opt):
-    noise_height, noise_width = noise.size()[2], noise.size()[3] 
-    mask = mask.repeat(opt.batch_size, 1, 1, 1)
-    mask = pad_mask(mask, (noise_height, noise_width)).float() # Padding masks to make same size as input 
-    # eye_in = pad_mask(eye[:, 0:1, :, :], (noise_height, noise_width)).float()
-    eye_in = pad_mask(eye[:, :, :, :], (noise_height, noise_width)).float().repeat(opt.batch_size, 1, 1, 1)
+# def make_input(noise, mask, eye, opt):
+#     noise_height, noise_width = noise.size()[2], noise.size()[3] 
+#     mask = mask.repeat(opt.batch_size, 1, 1, 1)
+#     mask = pad_mask(mask, (noise_height, noise_width)).float() # Padding masks to make same size as input 
+#     # eye_in = pad_mask(eye[:, 0:1, :, :], (noise_height, noise_width)).float()
+#     eye_in = pad_mask(eye[:, :, :, :], (noise_height, noise_width)).float().repeat(opt.batch_size, 1, 1, 1)
     
-    eye_colored = eye_in.clone()
-    eye_colored[:, 0, :, :] *= (opt.eye_color[0]/255)
-    eye_colored[:, 1, :, :] *= (opt.eye_color[1]/255)
-    eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
-    # plt.imsave('eye_test', eye_colored[0, -1, :, :].detach().cpu().numpy())
+#     eye_colored = eye_in.clone()
+#     eye_colored[:, 0, :, :] *= (opt.eye_color[0]/255)
+#     eye_colored[:, 1, :, :] *= (opt.eye_color[1]/255)
+#     eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
+#     # plt.imsave('eye_test', eye_colored[0, -1, :, :].detach().cpu().numpy())
 
-    #G_input = torch.cat((noise, mask, eye_colored), dim=1) # concatenating to make input to generator
-    G_input = noise
-    return G_input                 
+#     #G_input = torch.cat((noise, mask, eye_colored), dim=1) # concatenating to make input to generator
+#     G_input = noise
+#     return G_input                 
 
 def preprocess_mask(im, opt):
     # Pads mask to make it square and then resizes
@@ -554,7 +528,7 @@ def dilate_mask(mask,opt):
     return mask
 
 
-def draw_concat(Gs,Zs, reals, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_image,opt):
+def draw_concat(Gs,Zs, reals, crops, masks, constraints, NoiseAmp,in_s,mode,m_noise,m_image,opt):
     G_z = in_s
 
     if opt.random_crop:
@@ -566,7 +540,7 @@ def draw_concat(Gs,Zs, reals, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_i
             pad_noise = int(((opt.ker_size-1)*opt.num_layer)/2)
             if opt.mode == 'animation_train':
                 pad_noise = 0
-            for G,Z_opt,real_curr,real_next, mask_curr, eye_curr, noise_amp in zip(Gs,Zs,reals,reals[1:], masks, eyes, NoiseAmp):
+            for G,Z_opt,real_curr,real_next, mask_curr, constraint_curr, noise_amp in zip(Gs,Zs,reals,reals[1:], masks, constraints, NoiseAmp):
                 if count == 0:
                     z = generate_noise([1, Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device,num_samp=opt.batch_size)
                     z = z.expand(opt.batch_size, 3, z.shape[2], z.shape[3])
@@ -578,21 +552,21 @@ def draw_concat(Gs,Zs, reals, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_i
                 G_z = m_image(G_z).to(opt.device)
 
                 z_in = noise_amp*z+G_z
-                G_input = make_input(z_in, mask_curr, eye_curr, opt)
-                G_z = G(G_input.detach(),G_z)
+                # G_input = make_input(z_in, mask_curr, eye_curr, opt)
+                G_z = G(z_in.detach(),G_z)
                 G_z = batch_imresize(G_z,1/opt.scale_factor,opt)
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 count += 1
         if mode == 'rec':
             count = 0
-            for G,Z_opt,real_curr,real_next,mask_curr, eye_curr, noise_amp in zip(Gs,Zs,reals,reals[1:], masks, eyes, NoiseAmp):
+            for G,Z_opt,real_curr,real_next,mask_curr, constraint_curr, noise_amp in zip(Gs,Zs,reals,reals[1:], masks, constraints, NoiseAmp):
                 G_z = G_z[:, :, 0:real_curr.shape[2], 0:real_curr.shape[3]]
                 
                 G_z = m_image(G_z).to(opt.device)
                 
                 z_in = noise_amp*Z_opt+G_z
-                G_input = make_input(z_in, mask_curr, eye_curr, opt)
-                G_z = G(G_input.detach(),G_z)
+                # G_input = make_input(z_in, mask_curr, eye_curr, opt)
+                G_z = G(z_in.detach(),G_z)
                 G_z = batch_imresize(G_z,1/opt.scale_factor,opt)
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 #if count != (len(Gs)-1):
