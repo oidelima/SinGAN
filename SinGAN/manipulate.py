@@ -192,7 +192,7 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
         noise = opt.noise_amp*noise_+prev
         
         G_input = functions.make_input(noise, masks[-1], eye, opt)
-        fake_background = Gs[-1](G_input.detach(),prev)
+        fake_background = Gs[-1](G_input.detach().half(),prev)
         
         border = False #TODO
         

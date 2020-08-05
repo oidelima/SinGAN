@@ -144,7 +144,7 @@ def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
     interpolates = interpolates.to(device)#.cuda()
     interpolates = torch.autograd.Variable(interpolates, requires_grad=True)
 
-    disc_interpolates = netD(interpolates)
+    disc_interpolates = netD(interpolates.half())
 
 
     gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
@@ -423,7 +423,7 @@ def create_pyramid(im,pyr_list,opt, mode=None):
             curr_im = imresize_mask(im,scale,opt)  
         else:        
             curr_im = imresize(im,scale,opt)
-        pyr_list.append(curr_im.to(opt.device))
+        pyr_list.append(curr_im)
     return pyr_list
 
 
@@ -555,6 +555,7 @@ def dilate_mask(mask,opt):
 
 
 def draw_concat(Gs,Zs, reals, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_image,opt):
+    
     G_z = in_s
 
     if opt.random_crop:
@@ -579,7 +580,7 @@ def draw_concat(Gs,Zs, reals, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_i
 
                 z_in = noise_amp*z+G_z
                 G_input = make_input(z_in, mask_curr, eye_curr, opt)
-                G_z = G(G_input.detach(),G_z)
+                G_z = G(G_input.detach().half(),G_z)
                 G_z = batch_imresize(G_z,1/opt.scale_factor,opt)
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 count += 1
@@ -592,7 +593,7 @@ def draw_concat(Gs,Zs, reals, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_i
                 
                 z_in = noise_amp*Z_opt+G_z
                 G_input = make_input(z_in, mask_curr, eye_curr, opt)
-                G_z = G(G_input.detach(),G_z)
+                G_z = G(G_input.detach().half(),G_z)
                 G_z = batch_imresize(G_z,1/opt.scale_factor,opt)
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 #if count != (len(Gs)-1):
