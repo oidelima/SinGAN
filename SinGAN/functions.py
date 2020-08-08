@@ -559,6 +559,8 @@ def draw_concat(Gs,Zs, reals, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_i
 
     if opt.random_crop:
         reals = crops # use crop sizes if cropping
+        
+    
 
     if len(Gs) > 0:
         if mode == 'rand':
@@ -567,6 +569,8 @@ def draw_concat(Gs,Zs, reals, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_i
             if opt.mode == 'animation_train':
                 pad_noise = 0
             for G,Z_opt,real_curr,real_next, mask_curr, eye_curr, noise_amp in zip(Gs,Zs,reals,reals[1:], masks, eyes, NoiseAmp):
+
+                
                 if count == 0:
                     z = generate_noise([1, Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device,num_samp=opt.batch_size)
                     z = z.expand(opt.batch_size, 3, z.shape[2], z.shape[3])
@@ -583,6 +587,7 @@ def draw_concat(Gs,Zs, reals, crops, masks, eyes, NoiseAmp,in_s,mode,m_noise,m_i
                 G_z = batch_imresize(G_z,1/opt.scale_factor,opt)
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 count += 1
+
         if mode == 'rec':
             count = 0
             for G,Z_opt,real_curr,real_next,mask_curr, eye_curr, noise_amp in zip(Gs,Zs,reals,reals[1:], masks, eyes, NoiseAmp):

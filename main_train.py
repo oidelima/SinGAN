@@ -64,6 +64,7 @@ if __name__ == '__main__':
         # mask_locs = [(27, 45), (47, 59), (69, 28), (44, 55), (15, 35), (44, 40), (67, 26), 
         #              (16, 60), (8, 51), (12, 30), (60, 29), (58, 45), (11, 21), (64, 66), (7, 67), 
         #              (27, 68), (52, 57), (7, 49), (29, 3), (15, 49)]
-        SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt, num_samples = opt.num_samples, mask_locs = None)
+
+        SinGAN_generate(Gs,Zs,reals, crops[:7], masks[:7], eyes[:7], NoiseAmp[:7],opt, num_samples = opt.num_samples, mask_locs = None)
         random_crop_generate(reals[-1], masks[-1], eyes[-1], crops[-1], opt, num_samples = opt.num_samples, mask_locs = None)
 

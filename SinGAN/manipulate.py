@@ -144,7 +144,7 @@ def random_crop_generate(real, mask, eye, crop, opt, num_samples = 20, mask_locs
 
 
 def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=20, mask_locs=None):
-    #if torch.is_tensor(in_s) == False:
+
     Gs[-1].train()
     
     if in_s == None:
@@ -157,7 +157,7 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
 
     eye = eyes[-1]
 
-    
+
 
     for i in range(0,num_samples,1):
         
@@ -179,15 +179,20 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
         pad1 = ((opt.ker_size-1)*opt.num_layer)/2
         pad_noise = int(((opt.ker_size - 1) * opt.num_layer) / 2)
         pad_image = int(((opt.ker_size - 1) * opt.num_layer) / 2)
+       
+        
         
         m_noise = nn.ZeroPad2d(int(pad_noise))
         m_image = nn.ZeroPad2d(int(pad_image))
         
         noise_ = m_noise(noise_)
         
-        
+        # print(noise_.size())
         prev = functions.draw_concat(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
         prev = m_image(prev)
+        
+      
+        
         
         noise = opt.noise_amp*noise_+prev
         
