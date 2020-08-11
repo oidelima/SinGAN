@@ -88,7 +88,7 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     del images_cur
 
 def random_crop_generate(real, mask, eye, crop, opt, num_samples = 20, mask_locs = None):
-    eye = functions.generate_eye_mask(opt, mask, 0).to(opt.device) #generate eye in random location
+    # eye = functions.generate_eye_mask(opt, mask, 0).to(opt.device) #generate eye in random location
     
     real_fullsize = real.clone()
 
@@ -109,11 +109,11 @@ def random_crop_generate(real, mask, eye, crop, opt, num_samples = 20, mask_locs
 
         #mask_loc = mask_locs[i] if mask_locs else None
         I_curr, fake_ind, eye_ind, _ = functions.gen_fake(real, fake_background, mask, eye, opt.eye_color, opt, border = True, mask_loc = None)
-        eye_colored = eye_ind.clone().to(opt.device)
-        eye_colored[:, 0, :, :] *= (opt.eye_color[0]/255)
-        eye_colored[:, 1, :, :] *= (opt.eye_color[1]/255)
-        eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
-        I_curr = (I_curr*(1-eye_ind.to(opt.device)) + eye_colored)
+        # eye_colored = eye_ind.clone().to(opt.device)
+        # eye_colored[:, 0, :, :] *= (opt.eye_color[0]/255)
+        # eye_colored[:, 1, :, :] *= (opt.eye_color[1]/255)
+        # eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
+        # I_curr = (I_curr*(1-eye_ind.to(opt.device)) + eye_colored)
         if opt.random_crop:
             full_fake = real_fullsize.clone()
             full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr[0:1, :, :, :]
@@ -208,11 +208,11 @@ def SinGAN_generate(Gs,Zs,reals, crops, masks, eyes, NoiseAmp,opt,in_s=None,scal
             
             #I_curr, fake_ind = functions.gen_fake(crop, fake_background, masks[-1], opt, border, mask_loc = mask_locs[i])
             I_curr, fake_ind, eye_ind, _ = functions.gen_fake(crop, fake_background, masks[-1], eye, opt.eye_color, opt, border, mask_loc = None)
-            eye_colored = eye_ind.clone().to(opt.device)
-            eye_colored[:, 0, :, :] *= (opt.eye_color[0]/255)
-            eye_colored[:, 1, :, :] *= (opt.eye_color[1]/255)
-            eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
-            I_curr = (I_curr*(1-eye_ind.to(opt.device)) + eye_colored)
+            # eye_colored = eye_ind.clone().to(opt.device)
+            # eye_colored[:, 0, :, :] *= (opt.eye_color[0]/255)
+            # eye_colored[:, 1, :, :] *= (opt.eye_color[1]/255)
+            # eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
+            # I_curr = (I_curr*(1-eye_ind.to(opt.device)) + eye_colored)
             full_fake = reals[-1].clone()
             full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr[:1,:,:,:]
             full_mask = torch.zeros_like(full_fake)
