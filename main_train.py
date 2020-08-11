@@ -6,6 +6,7 @@ import SinGAN.functions as functions
 import random
 
 
+
 if __name__ == '__main__':
     parser = get_arguments()
     parser.add_argument('--run_name', help='name of experimental run', required=True)
@@ -57,6 +58,6 @@ if __name__ == '__main__':
             real, _ , _ = functions.random_crop(real, opt.crop_size, opt) 
         functions.adjust_scales2image(real, opt)
         train(opt, Gs, Zs, reals, crops, masks, constraints,mask_sources, NoiseAmp)
-        SinGAN_generate(Gs,Zs,reals, crops, masks, constraints, mask_sources, NoiseAmp,opt, num_samples = opt.num_samples)
-        random_crop_generate(reals[-1], masks[-1], constraints[-1], mask_sources[-1], crops[-1], opt, num_samples = opt.num_samples)
+        SinGAN_generate(Gs,Zs,reals[:7], crops[:7], masks[:7], constraints[:7], mask_sources[:7], NoiseAmp[:7],opt, num_samples = opt.num_samples)
+        random_crop_generate(reals[6], masks[6], constraints[6], mask_sources[6], crops[6], opt, num_samples = opt.num_samples)
 
