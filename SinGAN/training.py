@@ -33,6 +33,7 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
     reals = functions.create_pyramid(real,reals, opt)[:7]
     masks = functions.create_pyramid(mask_,masks,opt, mode = "mask")
     eyes = functions.create_pyramid(eye_,eyes,opt, mode = "mask")
+    
     #GPUtil.showUtilization()
 
     # plt.imshow(masks[-1].cpu().detach().squeeze(), cmap="gray")
@@ -52,6 +53,7 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
   
     # Shortcut to get sizes of corresponding crops for each scale
     crops =  functions.create_pyramid(crop_,crops, opt, mode="mask")
+    
      
     nfc_prev = 0
 
@@ -79,7 +81,8 @@ def train(opt,Gs,Zs,reals, crops, masks, eyes, NoiseAmp):
 
         
         z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals, crops, masks, eyes, Gs,Zs,in_s,NoiseAmp,opt)
-        torch.cuda.empty_cache()
+        with torch.cuda.device(opt.device):
+            torch.cuda.empty_cache()
 
         G_curr = functions.reset_grads(G_curr,False)
         G_curr.eval()
@@ -364,7 +367,8 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
 
             errD = errD_real + errD_fake + gradient_penalty
             optimizerD.step()
-            torch.cuda.empty_cache()
+            with torch.cuda.device(opt.device):
+                torch.cuda.empty_cache()
 
         errD2plot.append(errD.detach())
 
@@ -423,7 +427,8 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
                 rec_loss = 0
 
             optimizerG.step()
-            torch.cuda.empty_cache()
+            with torch.cuda.device(opt.device):
+                torch.cuda.empty_cache()
         
         errG2plot.append(errG.detach()+rec_loss)
         D_real2plot.append(D_x)
@@ -490,7 +495,8 @@ def train_single_scale(netD,netG,reals, crops,  masks, eyes, Gs,Zs,in_s,NoiseAmp
             eye = functions.generate_eye_mask(opt, masks[-1], opt.stop_scale - len(Gs)).to(opt.device)
         
         del fake_background,fake, fake_ind, eye_ind, eye_colored, output, real_output, mask_down, mask_ind
-        torch.cuda.empty_cache()
+        with torch.cuda.device(opt.device):
+            torch.cuda.empty_cache()
     functions.save_networks(netG,netD,z_opt,opt)
     # print("EYE RHO: ", opt.eye_rho)
     # if len(Gs) == (opt.stop_scale):
@@ -553,7 +559,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[0])
+    netG = nn.DataParallel(netG,device_ids=[5])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -561,7 +567,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[0])
+    netD = nn.DataParallel(netD,device_ids=[5])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))

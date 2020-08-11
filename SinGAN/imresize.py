@@ -18,9 +18,9 @@ def norm(x):
     out = (x - 0.5) * 2
     return out.clamp(-1, 1)
 
-def move_to_gpu(t):
+def move_to_gpu(t, opt):
     if (torch.cuda.is_available()):
-        t = t.to(torch.device('cuda'))
+        t = t.to(opt.device)
     return t
 
 def np2torch(x,opt):
@@ -33,7 +33,7 @@ def np2torch(x,opt):
         x = x.transpose(3, 2, 0, 1)
     x = torch.from_numpy(x)
     if not (opt.not_cuda):
-        x = move_to_gpu(x)
+        x = move_to_gpu(x, opt)
     x = x.type(torch.cuda.FloatTensor) if not(opt.not_cuda) else x.type(torch.FloatTensor)
     #x = x.type(torch.cuda.FloatTensor)
     x = norm(x)
@@ -86,7 +86,7 @@ def imresize_mask(im,scale,opt):
     im = im.transpose((3, 2, 0, 1))
     im = torch.from_numpy(im).double()
     if not (opt.not_cuda):
-        im = move_to_gpu(im)
+        im = move_to_gpu(im, opt)
     #im = im[:, :, 0:int(scale * s[2]), 0:int(scale * s[3])]
     
     return im
