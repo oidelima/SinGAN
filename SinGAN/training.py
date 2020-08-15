@@ -343,7 +343,7 @@ def train_single_scale(netD,netG,reals, crops,  masks, constraints, mask_sources
             # if len(Gs) < 2:
             #     errD_fake = (output*mask_down).sum()/mask_down.sum() - (output*(1-mask_down)).sum()/(1-mask_down).sum()
             
-            errD_fake = (output*const_down).sum()/const_down.sum()+(output*mask_down).sum()/mask_down.sum()
+            errD_fake = (output*mask_down).sum()/mask_down.sum() #(output*const_down).sum()/const_down.sum()+
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
@@ -379,13 +379,17 @@ def train_single_scale(netD,netG,reals, crops,  masks, constraints, mask_sources
             
 
             # print(fake*eye_ind.to(opt.device))
-            # L1_eye_loss = 0.3*abs(fake*eye_ind.to(opt.device) - eye_colored) #*(1*len(Gs))
+            # print(constraint_ind.size())
+            # print(fake.size())
+            # print(mask_source.size())
+            # fake_background[i,:,0:mask_height ,0:mask_width] *(constraint)
+            L1_eye_loss = 10*abs((fake_background[:,:,:mask.size()[2], :mask.size()[3]]-mask_source)*constraint.to(opt.device)).sum()/constraint.sum() #*(1*len(Gs))
             # errG = -output.mean() 
             # errG = -(output*mask_down).sum()/mask_down.sum() + L1_eye_loss.sum()#+ (output*(1-mask_down)).mean()
             # eye_output = output*const_down
             # diff = output*(1-const_down)
 
-            errG = -(output*const_down).sum()/const_down.sum() - (output*mask_down).sum()/mask_down.sum()
+            errG = - (output*mask_down).sum()/mask_down.sum() + L1_eye_loss #-(output*const_down).sum()/const_down.sum() 
                 
             errG.backward(retain_graph=True)
             if alpha!=0:
@@ -541,7 +545,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[0])
+    netG = nn.DataParallel(netG,device_ids=[3])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -549,7 +553,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[0])
+    netD = nn.DataParallel(netD,device_ids=[3])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))

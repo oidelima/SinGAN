@@ -35,6 +35,7 @@ if __name__ == '__main__':
     
     opt = parser.parse_args()
     opt = functions.post_config(opt)
+    torch.cuda.set_device(opt.device)
     Gs = []
     Zs = []
     reals = []
