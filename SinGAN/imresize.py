@@ -63,10 +63,10 @@ def imresize(im,scale,opt):
     #im = im[:, :, 0:int(scale * s[2]), 0:int(scale * s[3])]
     return im
 
-def batch_imresize(im,scale,opt):
+def batch_imresize(im,output_shape,opt):
     imgs = []
     for i in range(opt.batch_size):
-        im_ = imresize(im[i:i+1,:,:,:],scale,opt)
+        im_ = imresize_to_shape(im[i:i+1,:,:,:],output_shape,opt)
         imgs += im_[None, :, :, :]
     batch = torch.cat(imgs, dim=0)
     return batch
