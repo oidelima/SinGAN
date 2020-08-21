@@ -246,8 +246,8 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
     for i in range(opt.batch_size):
         
         
-        h_loc = np.random.randint(im_height - mask_height)
-        w_loc = np.random.randint(im_width - mask_width)
+        # h_loc = np.random.randint(im_height - mask_height)
+        # w_loc = np.random.randint(im_width - mask_width)
 
         
         # fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask)*(1-constraint) \
@@ -255,15 +255,20 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
         #                                                                     + constraint.to(opt.device)*mask_source 
 
         
-        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
-                                                                            + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
-                                                                            + constraint.to(opt.device)*mask_source 
+        # fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
+        #                                                                     + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
+        #                                                                     + constraint.to(opt.device)*mask_source 
+
+        fake[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask) \
+                                                                            + real[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]*(1-mask) 
+                                                                            # + constraint.to(opt.device)*mask_source 
         
  
-        fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask) 
-        mask_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  mask
-        constraint_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = constraint
-        constraint_filled[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = constraint*mask_source
+        fake_ind[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] =  fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask) 
+        # mask_ind[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] =  real[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)
+        mask_ind[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] =  (mask)
+        # constraint_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = constraint
+        # constraint_filled[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = constraint*mask_source
 
         
             
@@ -278,20 +283,14 @@ def pad_mask(mask, input_size):
     mask = torch.nn.functional.pad(mask, p2d, "constant", 0)
     return mask
 
-# def make_input(noise, mask, eye, opt):
+# def make_input(noise, surroundings, opt):
 #     noise_height, noise_width = noise.size()[2], noise.size()[3] 
-#     mask = mask.repeat(opt.batch_size, 1, 1, 1)
-#     mask = pad_mask(mask, (noise_height, noise_width)).float() # Padding masks to make same size as input 
+#     # mask = mask.repeat(opt.batch_size, 1, 1, 1)
+#     # mask = pad_mask(mask, (noise_height, noise_width)).float() # Padding masks to make same size as input 
 #     # eye_in = pad_mask(eye[:, 0:1, :, :], (noise_height, noise_width)).float()
-#     eye_in = pad_mask(eye[:, :, :, :], (noise_height, noise_width)).float().repeat(opt.batch_size, 1, 1, 1)
+#     # eye_in = pad_mask(eye[:, :, :, :], (noise_height, noise_width)).float().repeat(opt.batch_size, 1, 1, 1)
     
-#     eye_colored = eye_in.clone()
-#     eye_colored[:, 0, :, :] *= (opt.eye_color[0]/255)
-#     eye_colored[:, 1, :, :] *= (opt.eye_color[1]/255)
-#     eye_colored[:, 2, :, :] *= (opt.eye_color[2]/255)
-#     # plt.imsave('eye_test', eye_colored[0, -1, :, :].detach().cpu().numpy())
-
-#     #G_input = torch.cat((noise, mask, eye_colored), dim=1) # concatenating to make input to generator
+#     G_input = torch.cat((noise, mask, eye_colored), dim=1) # concatenating to make input to generator
 #     G_input = noise
 #     return G_input                 
 
@@ -540,16 +539,26 @@ def draw_concat(Gs,Zs, reals, masks, constraints, crop_sizes, NoiseAmp,in_s,mode
             pad_noise = int(((opt.ker_size-1)*opt.num_layer)/2)
             if opt.mode == 'animation_train':
                 pad_noise = 0
-            for G,Z_opt, size_curr,size_next, mask_curr, constraint_curr, noise_amp in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp):
+            for G,Z_opt, size_curr,size_next, mask_curr, constraint_curr, noise_amp, real in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp, reals):
 
+                real,_,_ = random_crop(real.clone(), size_curr, opt)
+                im_height, im_width = real.size()[2], real.size()[3] 
+                mask_height, mask_width = mask_curr.size()[2], mask_curr.size()[3]
+                height_init = (im_height - mask_height)//2
+                width_init = (im_width - mask_width)//2
+                
                 z = generate_noise([opt.nc_z, Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device,num_samp=opt.batch_size)
                 z = m_noise(z)
     
                 G_z = m_image(G_z).to(opt.device)
 
                 z_in = noise_amp*z+G_z
+                
+                surroundings = real.clone()
+                surroundings[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *= (1-mask_curr) 
+                G_input = torch.cat((z_in, m_noise(surroundings)), dim=1)  
  
-                G_z = G(z_in.detach(),G_z)
+                G_z = G(G_input.detach(),G_z)
 
                 G_z = batch_imresize(G_z,(size_next, size_next),opt)    
                 
@@ -557,12 +566,24 @@ def draw_concat(Gs,Zs, reals, masks, constraints, crop_sizes, NoiseAmp,in_s,mode
                 count += 1
         if mode == 'rec':
             count = 0
-            for G,Z_opt,size_curr,size_next,mask_curr, constraint_curr, noise_amp in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp):
+            for G,Z_opt,size_curr,size_next,mask_curr, constraint_curr, noise_amp, real in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp, reals):
                 
+                real,_,_ = random_crop(real.clone(), size_curr, opt)
+                im_height, im_width = real.size()[2], real.size()[3] 
+                mask_height, mask_width = mask_curr.size()[2], mask_curr.size()[3]
+                height_init = (im_height - mask_height)//2
+                width_init = (im_width - mask_width)//2
+                
+
+    
                 G_z = m_image(G_z).to(opt.device)
                 z_in = noise_amp*Z_opt+G_z
+                
+                surroundings = real.clone()
+                surroundings[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *= (1-mask_curr)  
+                G_input = torch.cat((z_in, m_noise(surroundings)), dim=1)   
                 # G_input = make_input(z_in, mask_curr, eye_curr, opt)
-                G_z = G(z_in.detach(),G_z)
+                G_z = G(G_input.detach(),G_z)
                 G_z = batch_imresize(G_z,(size_next, size_next),opt)
 
                 #if count != (len(Gs)-1):
@@ -572,7 +593,7 @@ def draw_concat(Gs,Zs, reals, masks, constraints, crop_sizes, NoiseAmp,in_s,mode
     return G_z.to(opt.device)
 
 def show_image(image):
-    plt.imshow(image.cpu().permute(1,2,0).detach().squeeze())
+    plt.imshow(image.cpu().permute(1,2,0).detach().squeeze(), vmin=-1, vmax=1)
     plt.show()
 
 

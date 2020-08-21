@@ -147,6 +147,8 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
     constraint = constraints[-1]
     mask_source = mask_sources[-1]
     mask = masks[-1]
+    
+    
 
     
 
@@ -170,7 +172,17 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
         noise = opt.noise_amp*noise_+prev
         
         # G_input = functions.make_input(noise, masks[-1], eye, opt)
-        fake_background = Gs[-1](noise.detach(),prev)
+        crop_size =  crop_sizes[-1]
+        crop, h_idx, w_idx = functions.random_crop(real, crop_size, opt)
+        im_height, im_width = crop.size()[2], crop.size()[3] 
+        mask_height, mask_width = mask.size()[2], mask.size()[3]
+        height_init = (im_height - mask_height)//2
+        width_init = (im_width - mask_width)//2
+        surroundings = crop.clone()
+        surroundings[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *= (1-mask)
+        G_input = torch.cat((noise, m_noise(surroundings)), dim=1)   
+        
+        fake_background = Gs[-1](G_input.detach(),prev)
         
         if opt.random_crop:
             crop_size =  crop_sizes[-1]
@@ -196,6 +208,7 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
             os.makedirs(dir2save + "/mask")
             os.makedirs(dir2save + "/constraint")
             os.makedirs(dir2save + "/prev")
+            os.makedirs(dir2save + "/real")
             if opt.random_crop:
                 os.makedirs(dir2save + "/full_fake")
                 os.makedirs(dir2save + "/full_mask")
@@ -208,6 +221,7 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
             plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind[:1, :, :, :].detach()))
             plt.imsave('%s/%s/%d.png' % (dir2save, "constraint", i), functions.convert_image_np(constraint_filled.detach()))
             plt.imsave('%s/%s/%d.png' % (dir2save, "prev", i), functions.convert_image_np(prev[:1, :, :, :].detach()))
+            plt.imsave('%s/%s/%d.png' % (dir2save, "real", i), functions.convert_image_np(real[:1, :, :, :].detach()))
             if opt.random_crop:
                 plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()))
                 plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()))

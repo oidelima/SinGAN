@@ -209,14 +209,19 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             else:
                 noise = opt.noise_amp*noise_+prev
 
-            # surroundings = real.clone()
-            # surroundings[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *= (1-mask)
+            surroundings = real.clone()
+            surroundings[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *= (1-mask)
             # functions.show_image(surroundings[0,:,:,:])
             
-            # G_input = functions.make_input(noise, mask_in, eye_in, opt)       
-            fake_background = netG(noise.detach(),prev)
-            fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
+            # G_input = functions.make_input(noise, mask_in, eye_in, opt)   
+            G_input = torch.cat((noise, m_noise(surroundings)), dim=1)   
+
+            # fake_background = netG(noise.detach(),prev)
+            fake_background = netG(G_input.detach(),prev)
             
+            fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
+            # functions.show_image(fake[0,:,:,:])
+            # ds
             output = netD(fake.detach())
 
             weights = torch.ones(1, 1, opt.receptive_field, opt.receptive_field)/opt.receptive_field
@@ -300,6 +305,7 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             plt.imsave('%s/fake_discriminator_heat_map_%s.png' %  (opt.outf, epoch), output[0, -1, :, :].detach().cpu().numpy())
             plt.imsave('%s/real_discriminator_heat_map_%s.png' %  (opt.outf, epoch), real_output[0, -1, :, :].detach().cpu().numpy())
             plt.imsave('%s/prev_%s.png' %  (opt.outf, epoch),functions.convert_image_np(prev[0:1, :, :, :].detach()))
+            plt.imsave('%s/real_%s.png' %  (opt.outf, epoch),functions.convert_image_np(real[0:1, :, :, :].detach()))
             # plt.imsave('%s/eye_output_%s.png' %  (opt.outf, epoch), eye_output[0, -1, :, :].detach().cpu().numpy())
             # plt.imsave('%s/diff_%s.png' %  (opt.outf, epoch), diff[0, -1, :, :].detach().cpu().numpy())
             # plt.imsave('%s/fake_with_eye%s.png' %  (opt.outf, epoch), functions.convert_image_np(fake_with_mask[0:1, :, :, :].detach()))
