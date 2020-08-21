@@ -232,6 +232,9 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
        
     im_height, im_width = real.size()[2], real.size()[3] 
     mask_height, mask_width = mask.size()[2], mask.size()[3] 
+    height_init = (im_height - mask_height)//2
+    width_init = (im_width - mask_width)//2
+
     
     fake = real.clone()
     fake_ind = torch.zeros((opt.batch_size, 3, im_height, im_width))
@@ -247,12 +250,17 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
         w_loc = np.random.randint(im_width - mask_width)
 
         
-        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask)*(1-constraint) \
+        # fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask)*(1-constraint) \
+        #                                                                     + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
+        #                                                                     + constraint.to(opt.device)*mask_source 
+
+        
+        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
                                                                             + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
                                                                             + constraint.to(opt.device)*mask_source 
         
  
-        fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,0:mask_height ,0:mask_width] *(mask) 
+        fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask) 
         mask_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  mask
         constraint_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = constraint
         constraint_filled[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = constraint*mask_source

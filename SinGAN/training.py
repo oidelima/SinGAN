@@ -37,8 +37,11 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
      
     nfc_prev = 0
 
-    while scale_num<7:
-        
+    
+    
+    
+    # while scale_num<opt.stop_scale+1:
+    while scale_num<7:  
         opt.nfc = min(opt.nfc_init * pow(2, math.floor(scale_num / 4)), 128)
         opt.min_nfc = min(opt.min_nfc_init * pow(2, math.floor(scale_num / 4)), 128)
 
@@ -234,10 +237,14 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
 
             netG.zero_grad()
             output = netD(fake)
+            im_height, im_width = real.size()[2], real.size()[3] 
+            mask_height, mask_width = mask.size()[2], mask.size()[3]
+            height_init = (im_height - mask_height)//2
+            width_init = (im_width - mask_width)//2
+
+            # L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).sum()/constraint.sum() 
             
-            L1_eye_loss = 10*abs((fake_background[:,:,:mask.size()[2], :mask.size()[3]]-mask_source)*constraint.to(opt.device)).sum()/constraint.sum() 
-            
-            errG = - (output*mask_down).sum()/mask_down.sum() + L1_eye_loss #-(output*const_down).sum()/const_down.sum() 
+            errG = - (output*mask_down).sum()/mask_down.sum() #+ L1_eye_loss #-(output*const_down).sum()/const_down.sum() 
             errG.backward(retain_graph=True)
             
             if alpha!=0:
@@ -248,14 +255,19 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
                 Z_opt = opt.noise_amp*z_opt+z_prev
                 # input_opt = functions.make_input(Z_opt, mask_in, eye_in, opt)
                 #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev),real)
-                mask_height, mask_width = mask.size()[2], mask.size()[3]
+                
                 # print(mask_in)
                 # plt.imshow((netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in).cpu().detach().squeeze(), cmap="gray")
                 # plt.show()
                 # plt.imshow((fixed_crop[:, :, :mask_height, :mask_width]*mask_in).cpu().detach().squeeze(), cmap="gray")
                 # plt.show()
                 #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,real[:, :, :mask_height, :mask_width]*mask_in)
-                rec_loss = alpha*loss(netG(Z_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask,fixed_crop[:, :, :mask_height, :mask_width]*mask)
+                # rec_loss = alpha*loss(netG(Z_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask,fixed_crop[:, :, :mask_height, :mask_width]*mask)
+                
+                rec_loss = alpha*loss(netG(Z_opt.detach(),z_prev)[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]*mask,
+                                    fixed_crop[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]*mask)
+
+                
                 rec_loss.backward(retain_graph=True)
                 rec_loss = rec_loss.detach()
             else:
@@ -386,7 +398,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[0])
+    netG = nn.DataParallel(netG,device_ids=[4])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -394,7 +406,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[0])
+    netD = nn.DataParallel(netD,device_ids=[4])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))

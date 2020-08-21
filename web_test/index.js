@@ -11,49 +11,22 @@ var base = "http://127.0.0.1:8000/Output/RandomSamples/"
 //             ["Random crop","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/random_crop/discriminator_extra_layer/"],
 //             ["Random crop","dan-woje-desertmix-surfacev2/random_crop/test_avgpooling/"]];
 
-var runs = [
-    // ["Normal, alpha=0","/dan-woje-desertmix-surfacev2/SinGAN/alpha_0/"],
-    //         ["Normal, alpha=0","/charlottesville-7-view1/SinGAN/alpha_0/"],
-    //         ["Normal, alpha=0","/2081085051/SinGAN/L1,alpha_0/"],
+var runs = [["Normal network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,normal_network,input_only_noise/"],
+            ["Extra layer (with stride = 1, kernel_size = 3) in discriminator network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,one_extra_layers,input_only_noise/"],
+            ["Two extra layers (with stride = 1, kernel_size = 3) in discriminator network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,two_extra_layers,input_only_noise/"],
+            ["Extra layer (with stride = 5, kernel_size = 5) in discriminator network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,final_layer_stride_5/"],
+            ["Extra layer (with stride = 10, kernel_size = 10) in discriminator network, batch size = 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/fixed_eye,stride_10/"],
 
-    //         ["Normal, alpha=10","/dan-woje-desertmix-surfacev2/SinGAN/alpha_10/"],
-    //         ["Normal, alpha=10","/charlottesville-7-view1/SinGAN/alpha_10/"],
-    //         ["Normal, alpha=10","/2081085051/SinGAN/alpha_10/"],
-
-            ["Fixed eval problem, alpha=0","/dan-woje-desertmix-surfacev2/SinGAN/no_l1,background,alpha_0/"],
-            ["Fullsized, alpha=0","/dan-woje-desertmix-surfacev2/SinGAN/fullsized,test/"],
-            ["Fixed eval problem, alpha=0","/charlottesville-7-view1/SinGAN/no_l1,background,alpha_0/"],
-            ["Fixed eval problem, alpha=10","/charlottesville-7-view1/SinGAN/no_l1,background,alpha_10/"],
-            ["Fixed eval problem, alpha=0","/2081085051/SinGAN/no_l1,background,alpha_0/"],
             
-            ["Fullsized, alpha=0","/2081085051/SinGAN/fullsized_test/"],
 
-            // ["Fixed eval problem, center crop from background, alpha=10","/dan-woje-desertmix-surfacev2/SinGAN/no_l1,background,alpha_0/"],
-            // ["Fixed eval problem, center crop from background, alpha=10","/charlottesville-7-view1/SinGAN/no_l1,background,alpha_10/"],
-            // ["Fixed eval problem, center crop from background, alpha=10","/2081085051/SinGAN/no_l1,background,alpha_10/"],
-
-            ["Fullsized, alpha=0","/2081085051/SinGAN/fullsized_test/"],
-            ["Fullsized, alpha=0","/dan-woje-desertmix-surfacev2/SinGAN/fullsized,test/"],
-
-
-
-           
-            ["Random crop","/dan-woje-desertmix-surfacev2/random_crop/no_l1,background,alpha_0/"],
-            ["Random crop","/dan-woje-desertmix-surfacev2/random_crop/fullsized,test/"],
-
-            ["Random crop","/charlottesville-7-view1/random_crop/no_l1,background,alpha_0/"],
-
-            ["Random crop","/2081085051/random_crop/no_l1,background,alpha_0/"],
-            ["Random crop","/2081085051/random_crop/fullsized_test/"]
-            ,
-            
+            ["Random crop","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/random_crop/fixed_eye,one_extra_layers,input_only_noise/"]
         ];
 
 
 
 var curr_img = 0;
 var left_run = 0;
-var right_run = 8;
+var right_run = 5;
 var image_type = "fake";
 
 
