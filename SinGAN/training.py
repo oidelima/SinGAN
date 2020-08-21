@@ -101,9 +101,15 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
         real = real_fullsize.clone()  
         real = real.repeat(opt.batch_size, 1, 1, 1)
         
+        
     mask = masks[len(Gs)]
     constraint = constraints[len(Gs)]
     mask_source = mask_sources[len(Gs)]
+    
+    im_height, im_width = real.size()[2], real.size()[3] 
+    mask_height, mask_width = mask.size()[2], mask.size()[3]
+    height_init = (im_height - mask_height)//2
+    width_init = (im_width - mask_width)//2
     
     opt.nzx = real.shape[2]#+(opt.ker_size-1)*(opt.num_layer) width 
     opt.nzy = real.shape[3]#+(opt.ker_size-1)*(opt.num_layer) height
@@ -203,8 +209,10 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             else:
                 noise = opt.noise_amp*noise_+prev
 
+            # surroundings = real.clone()
+            # surroundings[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *= (1-mask)
+            # functions.show_image(surroundings[0,:,:,:])
             
-
             # G_input = functions.make_input(noise, mask_in, eye_in, opt)       
             fake_background = netG(noise.detach(),prev)
             fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
@@ -237,10 +245,7 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
 
             netG.zero_grad()
             output = netD(fake)
-            im_height, im_width = real.size()[2], real.size()[3] 
-            mask_height, mask_width = mask.size()[2], mask.size()[3]
-            height_init = (im_height - mask_height)//2
-            width_init = (im_width - mask_width)//2
+            
 
             # L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).sum()/constraint.sum() 
             
@@ -398,7 +403,7 @@ def init_models(opt):
     #generator initialization:
     
     netG = models.GeneratorConcatSkip2CleanAdd(opt).to(opt.device)
-    netG = nn.DataParallel(netG,device_ids=[4])
+    netG = nn.DataParallel(netG,device_ids=[0])
     netG.apply(models.weights_init)
     if opt.netG != '':
         netG.load_state_dict(torch.load(opt.netG))
@@ -406,7 +411,7 @@ def init_models(opt):
 
     #discriminator initialization:
     netD = models.WDiscriminator(opt).to(opt.device)
-    netD = nn.DataParallel(netD,device_ids=[4])
+    netD = nn.DataParallel(netD,device_ids=[0])
     netD.apply(models.weights_init)
     if opt.netD != '':
         netD.load_state_dict(torch.load(opt.netD))
