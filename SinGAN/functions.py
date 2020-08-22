@@ -160,7 +160,6 @@ def read_image(opt, input_dir=None, input_name=None):
     return x
 
 def random_crop(real, crop_size, opt):
-    
     height = real.shape[2]
     width = real.shape[3]
     crop = torch.zeros((opt.batch_size, 3, crop_size, crop_size))
@@ -255,9 +254,14 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
         #                                                                     + constraint.to(opt.device)*mask_source 
 
         
+        # fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
+        #                                                                     + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
+        #                                                                     + constraint.to(opt.device)*mask_source 
+        
         fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
                                                                             + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
-                                                                            + constraint.to(opt.device)*mask_source 
+                                                                            + constraint.to(opt.device)*mask_source*opt.mask_alpha\
+                                                                            + constraint.to(opt.device)*fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]*(1-opt.mask_alpha)
         
  
         fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask) 

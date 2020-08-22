@@ -36,6 +36,8 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     
      
     nfc_prev = 0
+    
+    opt.mask_alpha = 0
 
     
     
@@ -146,6 +148,8 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
     
     
     for epoch in range(opt.niter):
+        
+        opt.mask_alpha += 1/(opt.niter*opt.stop_scale)
                     
         if (Gs == []) & (opt.mode != 'SR_train'):
             z_opt = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy], device=opt.device, num_samp=opt.batch_size)
@@ -346,6 +350,7 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
         del fake_background,fake, fake_ind, constraint_ind, output, real_output, mask_down, mask_ind
         torch.cuda.empty_cache()
     functions.save_networks(netG,netD,z_opt,opt)
+    print("ALPHA = ", opt.mask_alpha)
     return z_opt,in_s,netG 
 
 
