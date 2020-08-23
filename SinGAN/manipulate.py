@@ -164,7 +164,7 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
         
         noise_ = m_noise(noise_)
         
-        prev = functions.draw_concat(Gs,Zs,reals, masks, constraints, crop_sizes, NoiseAmp,in_s,'rand',m_noise,m_image,opt, test=True)
+        prev = functions.draw_concat(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rand',m_noise,m_image,opt, test=True)
         prev = m_image(prev)
         
         noise = opt.noise_amp*noise_+prev

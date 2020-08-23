@@ -532,11 +532,12 @@ def dilate_mask(mask,opt):
     return mask
 
 
-def draw_concat(Gs,Zs, reals, masks, constraints, crop_sizes, NoiseAmp,in_s,mode,m_noise,m_image,opt, test=None):
+def draw_concat(Gs,Zs, reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,in_s,mode,m_noise,m_image,opt, test=None):
     G_z = in_s
 
     # if opt.random_crop:
     #     reals = crops # use crop sizes if cropping
+    
 
     if len(Gs) > 0:
         if mode == 'rand':
@@ -544,7 +545,12 @@ def draw_concat(Gs,Zs, reals, masks, constraints, crop_sizes, NoiseAmp,in_s,mode
             pad_noise = int(((opt.ker_size-1)*opt.num_layer)/2)
             if opt.mode == 'animation_train':
                 pad_noise = 0
-            for G,Z_opt, size_curr,size_next, mask_curr, constraint_curr, noise_amp in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp):
+            for G,Z_opt, size_curr,size_next, mask_curr, constraint_curr, noise_amp, mask_source in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp, mask_sources):
+                
+                im_height, im_width = size_curr, size_curr
+                mask_height, mask_width = mask_curr.size()[2], mask_curr.size()[3] 
+                height_init = (im_height - mask_height)//2
+                width_init = (im_width - mask_width)//2
 
                 z = generate_noise([opt.nc_z, Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device,num_samp=opt.batch_size)
                 z = m_noise(z)
@@ -554,6 +560,11 @@ def draw_concat(Gs,Zs, reals, masks, constraints, crop_sizes, NoiseAmp,in_s,mode
                 z_in = noise_amp*z+G_z
  
                 G_z = G(z_in.detach(),G_z)
+                
+                G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint_curr) + constraint_curr*mask_source
+
+                # show_image(G_z[0,:,:,:])
+
 
                 G_z = batch_imresize(G_z,(size_next, size_next),opt)    
                 
@@ -561,12 +572,19 @@ def draw_concat(Gs,Zs, reals, masks, constraints, crop_sizes, NoiseAmp,in_s,mode
                 count += 1
         if mode == 'rec':
             count = 0
-            for G,Z_opt,size_curr,size_next,mask_curr, constraint_curr, noise_amp in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp):
+            for G,Z_opt,size_curr,size_next,mask_curr, constraint_curr, noise_amp, mask_source in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp, mask_sources):
+                
+                im_height, im_width = size_curr, size_curr
+                mask_height, mask_width = mask_curr.size()[2], mask_curr.size()[3] 
+                height_init = (im_height - mask_height)//2
+                width_init = (im_width - mask_width)//2
                 
                 G_z = m_image(G_z).to(opt.device)
                 z_in = noise_amp*Z_opt+G_z
                 # G_input = make_input(z_in, mask_curr, eye_curr, opt)
                 G_z = G(z_in.detach(),G_z)
+                G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint_curr) + constraint_curr*mask_source
+                
                 G_z = batch_imresize(G_z,(size_next, size_next),opt)
 
                 #if count != (len(Gs)-1):

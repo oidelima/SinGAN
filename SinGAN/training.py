@@ -150,6 +150,7 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
     for epoch in range(opt.niter):
         
         opt.mask_alpha += 1/(opt.niter*opt.stop_scale)
+        opt.mask_alpha=1
                     
         if (Gs == []) & (opt.mode != 'SR_train'):
             z_opt = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy], device=opt.device, num_samp=opt.batch_size)
@@ -191,15 +192,15 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
                     z_prev = m_image(z_prev)
                     prev = z_prev
                 else:
-                    prev = functions.draw_concat(Gs,Zs,reals, masks,constraints, crop_sizes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                    prev = functions.draw_concat(Gs,Zs,reals, masks,constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                     prev = m_image(prev)
-                    z_prev = functions.draw_concat(Gs,Zs,reals,masks,constraints, crop_sizes, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
+                    z_prev = functions.draw_concat(Gs,Zs,reals,masks,constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
                     # criterion = nn.MSELoss()
                     # RMSE = torch.sqrt(criterion(real, z_prev))
                     opt.noise_amp = opt.noise_amp_init #*RMSE
                     z_prev = m_image(z_prev)
             else:
-                prev = functions.draw_concat(Gs,Zs,reals, masks, constraints, crop_sizes, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
+                prev = functions.draw_concat(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                 prev = m_image(prev)
                 
             
