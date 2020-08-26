@@ -52,6 +52,7 @@ if __name__ == '__main__':
         functions.adjust_scales2image(real, opt)
         crop_sizes = [math.ceil((opt.crop_size*opt.scale1)*opt.scale_factor**(opt.stop_scale-i)) for i in range(opt.stop_scale + 1)]
         train(opt, Gs, Zs, reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp)
-        SinGAN_generate(Gs,Zs,reals[:7], masks[:7], constraints[:7], crop_sizes[:7], mask_sources[:7], NoiseAmp[:7],opt, num_samples = opt.num_samples)
-        random_crop_generate(reals[6], masks[6], constraints[6], mask_sources[6], crop_sizes[6] ,opt, num_samples = opt.num_samples)
-
+        # SinGAN_generate(Gs,Zs,reals[:7], masks[:7], constraints[:7], crop_sizes[:7], mask_sources[:7], NoiseAmp[:7],opt, num_samples = opt.num_samples)
+        SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,opt, num_samples = opt.num_samples)
+        # random_crop_generate(reals[6], masks[6], constraints[6], mask_sources[6], crop_sizes[6] ,opt, num_samples = opt.num_samples)
+        random_crop_generate(reals[-1], masks[-1], constraints[-1], mask_sources[-1], crop_sizes[-1] ,opt, num_samples = opt.num_samples)

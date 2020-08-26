@@ -153,7 +153,7 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
     for i in range(0,num_samples,1):
         
         
-        noise_ = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy], device=opt.device, num_samp=opt.batch_size)
+        noise_ = functions.generate_noise([opt.nc_z,crop_sizes[-1],crop_sizes[-1]], device=opt.device, num_samp=opt.batch_size)
         
         pad1 = ((opt.ker_size-1)*opt.num_layer)/2
         pad_noise = int(((opt.ker_size - 1) * opt.num_layer) / 2)
@@ -171,7 +171,9 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
         
         # G_input = functions.make_input(noise, masks[-1], eye, opt)
         fake_background = Gs[-1](noise.detach(),prev)
+
         
+
         if opt.random_crop:
             crop_size =  crop_sizes[-1]
             crop, h_idx, w_idx = functions.random_crop(real, crop_size, opt)
@@ -202,7 +204,7 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
             
         except OSError:
             pass
-        if (opt.mode != "harmonization") & (opt.mode != "editing") & (opt.mode != "SR") & (opt.mode != "paint2image"):
+        if (opt.mode != "harmonization") & (opt.mode != "editing") & (opt.mode != "SR") :
             plt.imsave('%s/%s/%d.png' % (dir2save, "fake", i), functions.convert_image_np(I_curr[:1, :, :, :].detach()))
             plt.imsave('%s/%s/%d.png' % (dir2save, "background", i), functions.convert_image_np(fake_background[:1, :, :, :].detach()))
             plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind[:1, :, :, :].detach()))
