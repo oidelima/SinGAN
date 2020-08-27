@@ -200,8 +200,8 @@ def generate_eye_mask(opt, mask, level):
     eye_diam = opt.eye_diam
     eye = Image.new('RGB', (mask.size()[2], mask.size()[3]))
     draw = ImageDraw.Draw(eye)
-    # eye_loc = find_valid_eye_location(opt, eye_diam, mask)
-    eye_loc = (85, 133) #TODO
+    eye_loc = find_valid_eye_location(opt, eye_diam, mask)
+    #eye_loc = (85, 133) #TODO
 
     draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
     eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
@@ -212,20 +212,21 @@ def generate_eye_mask(opt, mask, level):
         eye = move_to_gpu(eye, opt)
         eye = eye.unsqueeze(0)
         
+    
     eye = imresize_mask(eye,scale,opt)
     
     return eye
 
         
-# def find_valid_eye_location(opt, eye_diam, mask):
+def find_valid_eye_location(opt, eye_diam, mask):
 
-#     while True:
-#         try:
-#             loc = (random.randint(0, mask.size()[2]), random.randint(0, mask.size()[3]))   
-#             if mask[:, :, loc[0], loc[1]] == 1 and mask[:, :, loc[0] + eye_diam, loc[1] + eye_diam] == 1:
-#                 return loc
-#         except:
-#             pass
+    while True:
+        try:
+            loc = (random.randint(0, mask.size()[2]), random.randint(0, mask.size()[3]))   
+            if mask[:, :, loc[0], loc[1]] == 1 and mask[:, :, loc[0] + eye_diam, loc[1] + eye_diam] == 1:
+                return loc
+        except:
+            pass
 
 def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
        

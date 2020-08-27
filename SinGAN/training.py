@@ -34,6 +34,8 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     mask_source[:,0,:,:]  = 241
     mask_source[:,0,:,:]  = 238
     mask_source[:,0,:,:]  = 240
+    
+
 
     
     in_s = 0
@@ -179,14 +181,14 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
         # (1) Update D network: maximize D(x) + D(G(z))
         ###########################
         for j in range(opt.Dsteps):
-            # train with real
-            netD.zero_grad()
-            output = netD(real).to(opt.device)
-            real_output = output.clone()
-            #D_real_map = output.detach()
-            errD_real = -output.mean()#-a
-            errD_real.backward(retain_graph=True)
-            D_x = -errD_real.item()
+            # # train with real
+            # netD.zero_grad()
+            # output = netD(real).to(opt.device)
+            # real_output = output.clone()
+            # #D_real_map = output.detach()
+            # errD_real = -output.mean()#-a
+            # errD_real.backward(retain_graph=True)
+            # D_x = -errD_real.item()
 
            
 
@@ -243,8 +245,20 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             ref = fake_background.clone()
             ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint) + constraint*mask_source
             
+            
+             # train with real
+            netD.zero_grad()
+            output = netD(real*mask_ind.to(opt.device)).to(opt.device)
+            real_output = output.clone()
+            #D_real_map = output.detach()
+            errD_real = -output.mean()#-a
+            errD_real.backward(retain_graph=True)
+            D_x = -errD_real.item()
+            
+            
             # output = netD(fake.detach())
-            output = netD(ref.detach())
+            fake=fake*mask_ind.to(opt.device)
+            output = netD(fake.detach())
 
             # weights = torch.ones(1, 1, opt.receptive_field, opt.receptive_field)/opt.receptive_field
             # mask_down = nn.functional.conv2d(mask_ind, weights).to(opt.device)
@@ -256,7 +270,7 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
-            gradient_penalty = functions.calc_gradient_penalty(netD, real, ref, opt.lambda_grad, opt.device)
+            gradient_penalty = functions.calc_gradient_penalty(netD, real, fake, opt.lambda_grad, opt.device)
             gradient_penalty.backward()
 
             errD = errD_real + errD_fake + gradient_penalty
@@ -272,13 +286,15 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
         for j in range(opt.Gsteps):
 
             netG.zero_grad()
-            output = netD(ref)
+            output = netD(fake)
             
 
             # L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).sum()/constraint.sum() 
             
             errG = - output.mean()#(output*mask_down).sum()/mask_down.sum() #+ L1_eye_loss #-(output*const_down).sum()/const_down.sum() 
+            # errG = -(output*mask_down).sum()/mask_down.sum()
             errG.backward(retain_graph=True)
+            
             
             if alpha!=0:
                 loss = nn.MSELoss()
