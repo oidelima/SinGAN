@@ -191,30 +191,30 @@ def read_mask(opt, mask_dir=None, mask_name=None):
     #x = x.type(torch.FloatTensor)
     return x
 
-# def generate_eye_mask(opt, mask, level):
+def generate_eye_mask(opt, mask, level):
     
-#     scale = math.pow(opt.scale_factor, level)
+    scale = math.pow(opt.scale_factor, level)
     
-#     im_height, im_width = mask.size()[2], mask.size()[3]
-#     # Make eye constraint mask
-#     eye_diam = opt.eye_diam
-#     eye = Image.new('RGB', (mask.size()[2], mask.size()[3]))
-#     draw = ImageDraw.Draw(eye)
-#     eye_loc = find_valid_eye_location(opt, eye_diam, mask)
-#     eye_loc = (85, 133) #TODO
+    im_height, im_width = mask.size()[2], mask.size()[3]
+    # Make eye constraint mask
+    eye_diam = opt.eye_diam
+    eye = Image.new('RGB', (mask.size()[2], mask.size()[3]))
+    draw = ImageDraw.Draw(eye)
+    # eye_loc = find_valid_eye_location(opt, eye_diam, mask)
+    eye_loc = (85, 133) #TODO
 
-#     draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
-#     eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
-#     eye[eye>0] = 1 
+    draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
+    eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
+    eye[eye>0] = 1 
     
     
-#     if not(opt.not_cuda):
-#         eye = move_to_gpu(eye)
-#         eye = eye.unsqueeze(0)
+    if not(opt.not_cuda):
+        eye = move_to_gpu(eye, opt)
+        eye = eye.unsqueeze(0)
         
-#     eye = imresize_mask(eye,scale,opt)
+    eye = imresize_mask(eye,scale,opt)
     
-#     return eye
+    return eye
 
         
 # def find_valid_eye_location(opt, eye_diam, mask):
@@ -254,17 +254,17 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
         #                                                                     + constraint.to(opt.device)*mask_source 
 
         
-        # fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
-        #                                                                     + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
-        #                                                                     + constraint.to(opt.device)*mask_source 
+        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
+                                                                            + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
+                                                                            + constraint.to(opt.device)*mask_source 
         
         # fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
         #                                                                     + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) 
                                                                             # + constraint.to(opt.device)*mask_source*opt.mask_alpha\
                                                                             # + constraint.to(opt.device)*fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]*(1-opt.mask_alpha)
 
-        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)\
-                                                                            + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) 
+        # fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)\
+        #                                                                     + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) 
  
         fake_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask) 
         mask_ind[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] =  mask
@@ -601,15 +601,22 @@ def dilate_mask(mask,opt):
 
 #     return G_z.to(opt.device)
 
-def draw_concat(Gs,Zs,reals,NoiseAmp,in_s,mode,m_noise,m_image,opt):
+def draw_concat(Gs,Zs,reals, masks, constraints, mask_sources, NoiseAmp,in_s,mode,m_noise,m_image,opt):
     G_z = in_s
     if len(Gs) > 0:
         if mode == 'rand':
+            
             count = 0
             pad_noise = int(((opt.ker_size-1)*opt.num_layer)/2)
             if opt.mode == 'animation_train':
                 pad_noise = 0
-            for G,Z_opt,real_curr,real_next,noise_amp in zip(Gs,Zs,reals,reals[1:],NoiseAmp):
+            for G,Z_opt,real_curr,real_next,mask, constraint, mask_source, noise_amp in zip(Gs,Zs,reals,reals[1:],masks, constraints, mask_sources,NoiseAmp):
+                
+                im_height, im_width = real_curr.size()[2], real_curr.size()[3] 
+                mask_height, mask_width = mask.size()[2], mask.size()[3]
+                height_init = (im_height - mask_height)//2
+                width_init = (im_width - mask_width)//2
+                
                 if count == 0:
                     z = generate_noise([1, Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device)
                     z = z.expand(1, 3, z.shape[2], z.shape[3])
@@ -620,12 +627,15 @@ def draw_concat(Gs,Zs,reals,NoiseAmp,in_s,mode,m_noise,m_image,opt):
                 G_z = m_image(G_z)
                 z_in = noise_amp*z+G_z
                 G_z = G(z_in.detach(),G_z)
+                G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint) + constraint*mask_source
                 G_z = imresize(G_z,1/opt.scale_factor,opt)
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 count += 1
         if mode == 'rec':
             count = 0
-            for G,Z_opt,real_curr,real_next,noise_amp in zip(Gs,Zs,reals,reals[1:],NoiseAmp):
+            for G,Z_opt,real_curr,real_next, noise_amp in zip(Gs,Zs,reals,reals[1:],NoiseAmp):
+                
+                
                 G_z = G_z[:, :, 0:real_curr.shape[2], 0:real_curr.shape[3]]
                 G_z = m_image(G_z)
                 z_in = noise_amp*Z_opt+G_z

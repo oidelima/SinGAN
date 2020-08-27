@@ -137,13 +137,14 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
     
     
     if in_s == None:
-        in_s  = torch.full([opt.batch_size,opt.nc_z,crop_sizes[0],crop_sizes[0]], 0, device=opt.device)
+        in_s  = torch.full([opt.batch_size,opt.nc_z,opt.nzx,opt.nzy], 0, device=opt.device)
     
-    if not opt.random_crop:
-        real = reals[-1].repeat(opt.batch_size, 1, 1, 1).clone()
-    else:
-        real = reals[-1].clone()
+    # if not opt.random_crop:
+    #     real = reals[-1].repeat(opt.batch_size, 1, 1, 1).clone()
+    # else:
+    #     real = reals[-1].clone()
 
+    real = reals[-1]
     constraint = constraints[-1]
     mask_source = mask_sources[-1]
     mask = masks[-1]
@@ -153,7 +154,7 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
     for i in range(0,num_samples,1):
         
         
-        noise_ = functions.generate_noise([opt.nc_z,crop_sizes[-1],crop_sizes[-1]], device=opt.device, num_samp=opt.batch_size)
+        noise_ = functions.generate_noise([opt.nc_z,opt.nzx,opt.nzy], device=opt.device, num_samp=opt.batch_size)
         
         pad1 = ((opt.ker_size-1)*opt.num_layer)/2
         pad_noise = int(((opt.ker_size - 1) * opt.num_layer) / 2)
@@ -164,7 +165,8 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
         
         noise_ = m_noise(noise_)
         
-        prev = functions.draw_concat(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rand',m_noise,m_image,opt, test=True)
+        # prev = functions.draw_concat(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rand',m_noise,m_image,opt, test=True)
+        prev = functions.draw_concat(Gs,Zs,reals,masks, constraints, mask_sources,NoiseAmp,in_s,'rand',m_noise,m_image,opt)
         prev = m_image(prev)
         
         noise = opt.noise_amp*noise_+prev
@@ -174,19 +176,19 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
 
         
 
-        if opt.random_crop:
-            crop_size =  crop_sizes[-1]
-            crop, h_idx, w_idx = functions.random_crop(real, crop_size, opt)
+        # if opt.random_crop:
+        #     crop_size =  crop_sizes[-1]
+        #     crop, h_idx, w_idx = functions.random_crop(real, crop_size, opt)
 
             
-            I_curr, fake_ind, constraint_ind, _, constraint_filled = functions.gen_fake(crop, fake_background, mask, constraint, mask_source, opt)
+        #     I_curr, fake_ind, constraint_ind, _, constraint_filled = functions.gen_fake(crop, fake_background, mask, constraint, mask_source, opt)
 
-            full_fake = reals[-1].clone()
-            full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr[:1,:,:,:]
-            full_mask = torch.zeros_like(full_fake)
-            full_mask[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = fake_ind[:1, :, :, :]
-        else:
-            I_curr, fake_ind, constraint_ind, _, constraint_filled = functions.gen_fake(real, fake_background, mask,constraint,mask_source, opt)
+        #     full_fake = reals[-1].clone()
+        #     full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr[:1,:,:,:]
+        #     full_mask = torch.zeros_like(full_fake)
+        #     full_mask[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = fake_ind[:1, :, :, :]
+        # else:
+        I_curr, fake_ind, constraint_ind, _, constraint_filled = functions.gen_fake(real, fake_background, mask,constraint,mask_source, opt)
         
         if opt.mode == 'train':
             dir2save = '%s/RandomSamples/%s/SinGAN/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
@@ -198,9 +200,9 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
             os.makedirs(dir2save + "/mask")
             os.makedirs(dir2save + "/constraint")
             os.makedirs(dir2save + "/prev")
-            if opt.random_crop:
-                os.makedirs(dir2save + "/full_fake")
-                os.makedirs(dir2save + "/full_mask")
+            # if opt.random_crop:
+            #     os.makedirs(dir2save + "/full_fake")
+            #     os.makedirs(dir2save + "/full_mask")
             
         except OSError:
             pass
@@ -210,9 +212,9 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
             plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind[:1, :, :, :].detach()))
             plt.imsave('%s/%s/%d.png' % (dir2save, "constraint", i), functions.convert_image_np(constraint_filled.detach()))
             plt.imsave('%s/%s/%d.png' % (dir2save, "prev", i), functions.convert_image_np(prev[:1, :, :, :].detach()))
-            if opt.random_crop:
-                plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()))
-                plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()))
+            # if opt.random_crop:
+            #     plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()))
+            #     plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()))
             
         
 
