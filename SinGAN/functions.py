@@ -200,8 +200,10 @@ def generate_eye_mask(opt, mask, level):
     eye_diam = opt.eye_diam
     eye = Image.new('RGB', (mask.size()[2], mask.size()[3]))
     draw = ImageDraw.Draw(eye)
-    eye_loc = find_valid_eye_location(opt, eye_diam, mask)
-    #eye_loc = (85, 133) #TODO
+    # opt.eye_loc = find_valid_eye_location(opt, eye_diam, mask)
+    
+    print("EYE LOC: ", opt.eye_loc)
+    eye_loc = opt.eye_loc
 
     draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
     eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
