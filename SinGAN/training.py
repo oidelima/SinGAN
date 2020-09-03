@@ -243,6 +243,7 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
                     RMSE = torch.sqrt(criterion(real, z_prev))
                     opt.noise_amp = opt.noise_amp_init *RMSE
                     z_prev = m_image(z_prev)
+                    
             else:
                 # prev = functions.draw_concat(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                 prev = functions.draw_concat(Gs,Zs,reals,masks, constraints, mask_sources,NoiseAmp,in_s,'rand',m_noise,m_image,opt)
@@ -265,8 +266,8 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             
             # G_input = functions.make_input(noise, mask_in, eye_in, opt)       
             fake_background = netG(noise.detach(),prev)
-            fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
             
+            fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
             # ref = fake_background.clone()
             # ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint) + constraint*mask_source
             

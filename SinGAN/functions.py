@@ -245,6 +245,7 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
     constraint_filled = torch.zeros((opt.batch_size, 3, im_height, im_width))
 
 
+
     for i in range(opt.batch_size):
         
         
@@ -255,10 +256,13 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
         # fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,0:mask_height ,0:mask_width] *(mask)*(1-constraint) \
         #                                                                     + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
         #                                                                     + constraint.to(opt.device)*mask_source 
-
-        
-        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
-                                                                            + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
+        # print("now")
+        # print(real.size())
+        # print(mask.size())
+        # print(constraint.size())
+        # print(mask_source.size())
+        fake[i:i+1,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i:i+1,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
+                                                                            + real[:,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
                                                                             + constraint.to(opt.device)*mask_source 
         
         # fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
@@ -275,7 +279,7 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt):
         constraint_filled[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc + mask_width] = constraint*mask_source
 
         
-            
+
     return fake, fake_ind, constraint_ind, mask_ind, constraint_filled
  
                                                                                    
@@ -631,8 +635,9 @@ def draw_concat(Gs,Zs,reals, masks, constraints, mask_sources, NoiseAmp,in_s,mod
                 z_in = noise_amp*z+G_z
                 G_z = G(z_in.detach(),G_z)
                 G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint) + constraint*mask_source
-                G_z = imresize(G_z,1/opt.scale_factor,opt)
-                G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
+                # G_z = imresize(G_z,1/opt.scale_factor,opt) 
+                G_z = batch_imresize(G_z,(real_next.shape[2], real_next.shape[3]),opt)
+                # G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 count += 1
         if mode == 'rec':
             count = 0
@@ -644,6 +649,7 @@ def draw_concat(Gs,Zs,reals, masks, constraints, mask_sources, NoiseAmp,in_s,mod
                 z_in = noise_amp*Z_opt+G_z
                 G_z = G(z_in.detach(),G_z)
                 G_z = imresize(G_z,1/opt.scale_factor,opt)
+                
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
                 #if count != (len(Gs)-1):
                 #    G_z = m_image(G_z)

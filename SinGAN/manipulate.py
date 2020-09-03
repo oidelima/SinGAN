@@ -88,17 +88,12 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     del images_cur
 
 def random_crop_generate(real, mask, constraint, mask_source, crop_size, opt, num_samples = 20):
-    
-    real_fullsize = real.clone()
+
 
     for i in range(num_samples):
         
-        if opt.random_crop:
-            fake_background, _, _ = functions.random_crop(real_fullsize, crop_size, opt)
-            real, h_idx, w_idx = functions.random_crop(real_fullsize.clone(), crop_size, opt)
-        else:
-            real = real_fullsize.clone()
-            fake_background = real_fullsize.clone()
+        fake_background = real.clone().repeat(opt.batch_size, 1, 1, 1)
+        
 
         I_curr, fake_ind, constraint_ind, _, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
 
