@@ -289,8 +289,8 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             # fake=fake*mask_ind.to(opt.device)
             output = netD(fake.detach())
 
-            errD_fake = (output*mask_down  - (output*(1-mask_down))).mean()#/mask_down.sum() - (output*(1-mask_down)).sum()/mask_down.sum() #(output*mask_down).sum()/mask_down.sum() #(output*const_down).sum()/const_down.sum()
-            # errD_fake = output.mean()
+            # errD_fake = (output*mask_down  - (output*(1-mask_down))).mean()#/mask_down.sum() - (output*(1-mask_down)).sum()/mask_down.sum() #(output*mask_down).sum()/mask_down.sum() #(output*const_down).sum()/const_down.sum()
+            errD_fake = output.mean()
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
@@ -310,13 +310,13 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
         for j in range(opt.Gsteps):
 
             netG.zero_grad()
-            output = netD(fake.detach())
+            output = netD(fake)
             
 
             # L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).sum()/constraint.sum() 
-            errG = -(output*mask_down  - (output*(1-mask_down))).mean()
+            # errG = -(output*mask_down  - (output*(1-mask_down))).mean()
             # errG = -(output*mask_down).mean()
-            # errG = - output.mean()#(output*mask_down).sum()/mask_down.sum() #+ L1_eye_loss #-(output*const_down).sum()/const_down.sum() 
+            errG = - output.mean()#(output*mask_down).sum()/mask_down.sum() #+ L1_eye_loss #-(output*const_down).sum()/const_down.sum() 
             # errG = -(output*mask_down).mean() #+ (output*(1-mask_down)).sum()/(1-mask_down).sum() 
             errG.backward(retain_graph=True)
             
