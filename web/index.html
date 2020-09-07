@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ganmouflage</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col">
+            <figcaption class="text-center" id="caption-left" >Random crop</figcaption>
+            <img id="first-img" src="" style="width:100%" onclick="next_run(event)">
+            </div>
+
+            <div class="col">
+            <figcaption class="text-center" id="caption-right" >GAN</figcaption>
+            <img id="second-img"src=""  style="width:100%" onclick="next_run(event)">
+            </div>
+
+        </div>
+    </div>
+
+    <div class="container text-center" id="control">
+        <br>
+        <button class="btn btn-default" id="prev" onmousedown="" type='button'>Previous</button>
+        <button class="btn btn-default" id="next" onmousedown="" type='button'>Next</button>
+    </div>
+    <div class="container text-center form-check">
+        <form name="image-type-form">
+            <input type="radio" id="fake" name="image_type" onclick="change_image_type()" value="fake" checked>
+            <label for="fake">Fake</label>
+            <input type="radio" id="mask" name="image_type" onclick="change_image_type()" value="mask">
+            <label for="mask">Mask</label>
+            <input type="radio" id="background" name="image_type" onclick="change_image_type()" value="background">
+            <label for="background">Background</label>
+            <input type="radio" id="full_fake" name="image_type" onclick="change_image_type()" value="full_fake">
+            <label for="full_fake">Fullsized fake</label>
+            <input type="radio" id="full_mask" name="image_type" onclick="change_image_type()" value="full_mask">
+            <label for="full_mask">Fullsized mask</label>
+        </form>
+
+    </div>
+    <div class="container text-center" id="image-num-indicator">
+        <p id="counter">
+            
+        </p>
+
+    </div>
+    <script src="index.js"></script>
+    
+</body>

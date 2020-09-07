@@ -313,10 +313,10 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             output = netD(fake)
             
 
-            # L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).sum()/constraint.sum() 
+            L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).mean()
             # errG = -(output*mask_down  - (output*(1-mask_down))).mean()
             # errG = -(output*mask_down).mean()
-            errG = - output.mean()#(output*mask_down).sum()/mask_down.sum() #+ L1_eye_loss #-(output*const_down).sum()/const_down.sum() 
+            errG = - output.mean()+ L1_eye_loss#(output*mask_down).sum()/mask_down.sum()  #-(output*const_down).sum()/const_down.sum() 
             # errG = -(output*mask_down).mean() #+ (output*(1-mask_down)).sum()/(1-mask_down).sum() 
             errG.backward(retain_graph=True)
             
@@ -351,7 +351,7 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             optimizerG.step()
 
         
-        errG2plot.append(errG.detach()+rec_loss)
+        # errG2plot.append(errG.detach()+rec_loss)
         D_real2plot.append(D_x)
         D_fake2plot.append(D_G_z)
         z_opt2plot.append(rec_loss)
