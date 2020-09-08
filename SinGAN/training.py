@@ -270,17 +270,24 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             # ref = fake_background.clone()
             # ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint) + constraint*mask_source
             
-            
-            weights = torch.ones(1, 1, opt.receptive_field, opt.receptive_field)/opt.receptive_field
+            mask_ind = torch.round(mask_ind)
+
+            weights = torch.ones(1, 1, opt.receptive_field, opt.receptive_field)/(opt.receptive_field**2)
             mask_down = nn.functional.conv2d(mask_ind.detach(), weights).to(opt.device)
             # const_down = nn.functional.conv2d(constraint_ind[:,0:1,:,:], weights).to(opt.device)
 
+            # BCE_loss = nn.BCELoss().cuda()
+            # from torch.autograd import Variable
+            
              # train with real
             netD.zero_grad()
             output = netD(real).to(opt.device)
-            real_output = output.clone()
+            real_output = output.detach()
             #D_real_map = output.detach()
-            errD_real = -output.mean()#-a
+            # errD_real = -output.mean()#-a
+            # real_loss = BCE_loss(output,Variable(torch.ones(output.size()).cuda()))
+         
+            errD_real = -(output*mask_down).mean()
             # errD_real = -(output*mask_down).sum()/mask_down.sum()
             errD_real.backward(retain_graph=True)
             D_x = -errD_real.item()
@@ -289,8 +296,11 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             # fake=fake*mask_ind.to(opt.device)
             output = netD(fake.detach())
 
+            # fake_loss = BCE_loss(output*mask_down,Variable(1-mask_down))
+
             # errD_fake = (output*mask_down  - (output*(1-mask_down))).mean()#/mask_down.sum() - (output*(1-mask_down)).sum()/mask_down.sum() #(output*mask_down).sum()/mask_down.sum() #(output*const_down).sum()/const_down.sum()
-            errD_fake = output.mean()
+            # errD_fake = output.mean()
+            errD_fake = (output*mask_down).mean()
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
 
@@ -298,6 +308,8 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             gradient_penalty.backward()
 
             errD = errD_real + errD_fake + gradient_penalty
+            # loss_D = (real_loss + fake_loss)/2
+            # loss_D.backward(retain_graph=True)
             optimizerD.step()
 
 
@@ -311,12 +323,14 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
 
             netG.zero_grad()
             output = netD(fake)
+            # gen_loss = BCE_loss(output*mask_down,Variable(mask_down))
+            # gen_loss.backward(retain_graph=True)
             
 
-            L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).mean()
+            # L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).mean()
             # errG = -(output*mask_down  - (output*(1-mask_down))).mean()
-            # errG = -(output*mask_down).mean()
-            errG = - output.mean()+ L1_eye_loss#(output*mask_down).sum()/mask_down.sum()  #-(output*const_down).sum()/const_down.sum() 
+            errG = -(output*mask_down).mean()
+            # errG = - (output).mean()#+ L1_eye_loss#(output*mask_down).sum()/mask_down.sum()  #-(output*const_down).sum()/const_down.sum() 
             # errG = -(output*mask_down).mean() #+ (output*(1-mask_down)).sum()/(1-mask_down).sum() 
             errG.backward(retain_graph=True)
             
