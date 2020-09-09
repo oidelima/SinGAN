@@ -1,110 +1,158 @@
 const NUM_SAMPLES = 20
-var base = "http://127.0.0.1:8000/Output/RandomSamples/"
-
-// var runs = [["Extra layer (stride = 10)","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/discriminator_extra_layer/"],
-//             ["Extra layer (stride = 5)","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/extra_layer,stride_5/"], 
-//             ["Loss upweighted x 1","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/test,mult_1_00/"],
-//             ["Loss upweighted x 1.3828","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/SinGAN/test,mult_1_3828/"],
-//             ["Bird, extra layer (stride=20)","dan-woje-desertmix-surfacev2/SinGAN/test_avgpooling_2/"],
-//             ["Bird, average pooling ","dan-woje-desertmix-surfacev2/SinGAN/test_avgpooling/"],
-
-//             ["Random crop","181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08/random_crop/discriminator_extra_layer/"],
-//             ["Random crop","dan-woje-desertmix-surfacev2/random_crop/test_avgpooling/"]];
-
-var runs = [
-    // ["Normal, alpha=0","/dan-woje-desertmix-surfacev2/SinGAN/alpha_0/"],
-    //         ["Normal, alpha=0","/charlottesville-7-view1/SinGAN/alpha_0/"],
-    //         ["Normal, alpha=0","/2081085051/SinGAN/L1,alpha_0/"],
-
-    //         ["Normal, alpha=10","/dan-woje-desertmix-surfacev2/SinGAN/alpha_10/"],
-    //         ["Normal, alpha=10","/charlottesville-7-view1/SinGAN/alpha_10/"],
-    //         ["Normal, alpha=10","/2081085051/SinGAN/alpha_10/"],
-
-            ["Fixed eval problem, alpha=0","/dan-woje-desertmix-surfacev2/SinGAN/no_l1,background,alpha_0/"],
-            ["Fullsized, alpha=0","/dan-woje-desertmix-surfacev2/SinGAN/fullsized,test/"],
-            ["Fixed eval problem, alpha=0","/charlottesville-7-view1/SinGAN/no_l1,background,alpha_0/"],
-            ["Fixed eval problem, alpha=10","/charlottesville-7-view1/SinGAN/no_l1,background,alpha_10/"],
-            ["Fixed eval problem, alpha=0","/2081085051/SinGAN/no_l1,background,alpha_0/"],
-            
-            ["Fullsized, alpha=0","/2081085051/SinGAN/fullsized_test/"],
-
-            // ["Fixed eval problem, center crop from background, alpha=10","/dan-woje-desertmix-surfacev2/SinGAN/no_l1,background,alpha_0/"],
-            // ["Fixed eval problem, center crop from background, alpha=10","/charlottesville-7-view1/SinGAN/no_l1,background,alpha_10/"],
-            // ["Fixed eval problem, center crop from background, alpha=10","/2081085051/SinGAN/no_l1,background,alpha_10/"],
-
-            ["Fullsized, alpha=0","/2081085051/SinGAN/fullsized_test/"],
-            ["Fullsized, alpha=0","/dan-woje-desertmix-surfacev2/SinGAN/fullsized,test/"],
-
-
-
-           
-            ["Random crop","/dan-woje-desertmix-surfacev2/random_crop/no_l1,background,alpha_0/"],
-            ["Random crop","/dan-woje-desertmix-surfacev2/random_crop/fullsized,test/"],
-
-            ["Random crop","/charlottesville-7-view1/random_crop/no_l1,background,alpha_0/"],
-
-            ["Random crop","/2081085051/random_crop/no_l1,background,alpha_0/"],
-            ["Random crop","/2081085051/random_crop/fullsized_test/"]
-            ,
-            
-        ];
-
-
-
-var curr_img = 0;
-var left_run = 0;
-var right_run = 8;
+var base = "http://127.0.0.1:8000/Output/RandomSamples"
+var modes = ["SinGAN", "random_crop"]
+var backgrounds = ["2081085051",  "dan-woje-desertmix-surfacev2"] //"charlottesville-7-view1",
 var image_type = "fake";
+var run_name = "test"
+var img_count = 0;
+var urls = init_urls();
+var start_time;
+var image_url;
+var img = document.getElementById("img");
+var img_mask = document.getElementById("img-mask");
+img_mask.crossOrigin = "Anonymous";
+canvas = document.createElement('canvas');
+
+img.onmousedown = GetCoordinates;
+// console.log(urls)
 
 
-document.getElementById("prev").addEventListener("click", () => {
-    if (curr_img > 0) {
-        curr_img -= 1;
-        load_images();
-    }
-});
+
+
 
 document.getElementById("next").addEventListener("click", () => {
-    if (curr_img < NUM_SAMPLES - 1) {
-        curr_img += 1;
-        load_images();
-    }
+    load_images();
+    start_time = new Date().getTime();
+    //setTimeout(myFunction, 30000)
 });
 
 window.addEventListener('load', () => {
-    if (curr_img < NUM_SAMPLES - 1) {
-        load_images();
-    }
+    load_images();
+    start_time = new Date().getTime();
+    //setTimeout(myFunction, 30000)
 });
+
+// function myFunction() {
+//     alert('Out of time');
+//   }
+
+
+
+function init_urls(){
+    var urls = [];
+    for (var i = 0; i < modes.length; i++){
+        for(var j = 0; j < backgrounds.length; j++){
+            for (var k = 0; k < NUM_SAMPLES; k++){
+                urls.push(base + "/" + backgrounds[j] + "/" + modes[i] + "/" +  run_name + "/" + image_type + "/" + String(k) + ".png")
+            }
+        }
+    }
+    return urls
+    
+}
 
 function load_images(){
 
-    document.getElementById("caption-left").innerHTML = runs[left_run][0]
-    document.getElementById("caption-right").innerHTML = runs[right_run][0]
-    document.getElementById("first-img").src = base + runs[left_run][1] + image_type + "/" + String(curr_img) + ".png"
-    document.getElementById("second-img").src = base + runs[right_run][1] + image_type + "/" + String(curr_img) + ".png"
-    document.getElementById("counter").innerHTML = "Image: " + String(curr_img+1) + "/" + String(NUM_SAMPLES)
+    var index =  Math.floor(Math.random() * urls.length);
+    image_url = urls[index]
+    urls.splice(index, 1)
+
+
+    document.getElementById("caption").innerHTML = image_url.split('/')[6]
+    img.src = image_url
+
+    var constraint_url = image_url.split("/")
+    constraint_url[constraint_url.length-2] = "mask"
+    constraint_url = constraint_url.join("/")
+    img_mask.src = constraint_url
+   
+    document.getElementById("counter").innerHTML = "Image: " + String(img_count+1) + "/" + String(NUM_SAMPLES * modes.length * backgrounds.length)
+
+    img_count += 1;
+
 
 }
 
-
-function change_image_type(){
-    image_type = document.querySelector('input[name="image_type"]:checked').value;
-    load_images()
-}
-
-function next_run(event){
-    
-    if (event.target.id == "first-img") {
-        if (left_run < runs.length -1) left_run+= 1;
-        else left_run = 0
+function FindPosition(oElement)
+{
+  if(typeof( oElement.offsetParent ) != "undefined")
+  {
+    for(var posX = 0, posY = 0; oElement; oElement = oElement.offsetParent)
+    {
+      posX += oElement.offsetLeft;
+      posY += oElement.offsetTop;
     }
-    else if (event.target.id == "second-img"){
-        if (right_run < runs.length -1) right_run+= 1;
-        else right_run = 0
-    } 
-    load_images()
+      return [ posX, posY ];
+    }
+    else
+    {
+      return [ oElement.x, oElement.y ];
+    }
 }
+
+function GetCoordinates(e)
+{
+
+  // var PosX = 0;
+  // var PosY = 0;
+  // var ImgPos;
+  // ImgPos = FindPosition(img);
+  // if (!e) var e = window.event;
+  // if (e.pageX || e.pageY)
+  // {
+  //   PosX = e.pageX;
+  //   PosY = e.pageY;
+  // }
+  // else if (e.clientX || e.clientY)
+  //   {
+  //     PosX = e.clientX + document.body.scrollLeft
+  //       + document.documentElement.scrollLeft;
+  //     PosY = e.clientY + document.body.scrollTop
+  //       + document.documentElement.scrollTop;
+  //   }
+  // PosX = PosX - ImgPos[0];
+  // PosY = PosY - ImgPos[1];
+
+  // var constraint_url = image_url.split("/")
+  // constraint_url[constraint_url.length-2] = "mask"
+  // constraint_url = constraint_url.join("/")
+  // img.src = constraint_url
+
+
+  canvas.width = img.width;
+  canvas.height = img.height;
+  canvas.getContext('2d').drawImage(img_mask, 0, 0, img.width, img.height);
+  var pixelData = canvas.getContext('2d').getImageData(event.offsetX, event.offsetY, 1, 1).data;
+  // img.src = image_url
+
+  // console.log("X = ", PosX);
+  // console.log("Y = ", PosY);
+  // console.log("Image width", img.width )
+  // console.log("Image height", img.height)
+  console.log(pixelData)
+}
+
+
+
+
+
+// function change_image_type(){
+//     image_type = document.querySelector('input[name="image_type"]:checked').value;
+//     load_images()
+// }
+
+// function next_run(event){
+    
+//     if (event.target.id == "first-img") {
+//         if (left_run < runs.length -1) left_run+= 1;
+//         else left_run = 0
+//     }
+//     else if (event.target.id == "second-img"){
+//         if (right_run < runs.length -1) right_run+= 1;
+//         else right_run = 0
+//     } 
+//     load_images()
+// }
 
 
 
