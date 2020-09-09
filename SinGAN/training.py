@@ -31,11 +31,11 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     mask_source = torch.ones_like(mask_source)
 
     #ocean
-    opt.eye_diam=4
-    opt.eye_loc = (38, 78) #TODO ocean
-    mask_source[:,0,:,:]  = (241/255 - 0.5)*2
-    mask_source[:,1,:,:]  = (238/255 - 0.5)*2
-    mask_source[:,2,:,:]  = (240/255 - 0.5)*2
+    # opt.eye_diam=4
+    # opt.eye_loc = (38, 78) #TODO ocean
+    # mask_source[:,0,:,:]  = (241/255 - 0.5)*2
+    # mask_source[:,1,:,:]  = (238/255 - 0.5)*2
+    # mask_source[:,2,:,:]  = (240/255 - 0.5)*2
 
     #tetra_fish
     # opt.eye_diam = 4
@@ -52,11 +52,11 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     # mask_source[:,2,:,:]  = (184/255 - 0.5)*2
 
     # rabbit
-    # opt.eye_diam = 4
-    # opt.eye_loc = (60, 43) #TODO 
-    # mask_source[:,0,:,:]  = (168/255 - 0.5)*2
-    # mask_source[:,1,:,:]  = (176/255 - 0.5)*2
-    # mask_source[:,2,:,:]  = (155/255 - 0.5)*2
+    opt.eye_diam = 4
+    opt.eye_loc = (60, 43) #TODO 
+    mask_source[:,0,:,:]  = (168/255 - 0.5)*2
+    mask_source[:,1,:,:]  = (176/255 - 0.5)*2
+    mask_source[:,2,:,:]  = (155/255 - 0.5)*2
 
     
     constraint_ = functions.generate_eye_mask(opt, mask_, 0)
@@ -327,9 +327,9 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             # gen_loss.backward(retain_graph=True)
             
 
-            # L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).mean()
+            L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).mean()
             # errG = -(output*mask_down  - (output*(1-mask_down))).mean()
-            errG = -(output*mask_down).mean()
+            errG = -(output*mask_down).mean() + L1_eye_loss
             # errG = - (output).mean()#+ L1_eye_loss#(output*mask_down).sum()/mask_down.sum()  #-(output*const_down).sum()/const_down.sum() 
             # errG = -(output*mask_down).mean() #+ (output*(1-mask_down)).sum()/(1-mask_down).sum() 
             errG.backward(retain_graph=True)
