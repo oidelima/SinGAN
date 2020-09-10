@@ -6,42 +6,86 @@
 </head>
 
 <body>
-    <div class="container">
-        <div class="row">
-            <div class="mx-auto col-8">
-            <figcaption class="text-center" id="caption" >Random crop</figcaption>
-            <img id="img" src="" style="width:100%" >
-            <img id="img-mask" src="" style="width:100%" class="d-none">
+    <div id = "intro-page" >
+        <div class="card container mt-5 p-5 w-50">
+            <h1 class="my-3">
+                Camouflage game
+            </h1>
+
+            <div class="my-3">
+                Instructions:
+
+                You'll look at a sequence of images, each containing a hidden animal: a "camouflaged" shape that's been painted in a way that makes it hard to see. Your task is to click on the hidden shape in each image.
+
+            </div>
+            <div class="text-center my-3">
+                <button class="btn btn-default btn-primary w-25 " id="start"  type='button' class="text-center" >Start</button>
+
+            </div>    
+
+        </div>
+            
+
+    </div>
+    <div id="main-page" class="d-none">
+        <div class="container">
+            <div class="row">
+                <div class="mx-auto col-8">
+                <!-- <figcaption class="text-center" id="caption" >Random crop</figcaption> -->
+                <img id="img" src="" style="width:100%" >
+                <img id="img-mask" src="" style="width:100%" class="d-none">
+                </div>
             </div>
         </div>
-    </div>
+    
+        <div class="container text-center" id="control">
+            <br>
+            <div>Click on the animal hidden in the picture</div>
+            <div id="console" ></div>
+            <!-- <button class="btn btn-default" id="prev" onmousedown="" type='button'>Previous</button> -->
+            <button class="btn btn-default btn-primary" id="next"  type='button'>Next</button>
+            <div id="timer"></div>
+        </div>
+        <!-- <div class="container text-center form-check">
+            <form name="image-type-form">
+                <input type="radio" id="fake" name="image_type" onclick="change_image_type()" value="fake" checked>
+                <label for="fake">Fake</label>
+                <input type="radio" id="mask" name="image_type" onclick="change_image_type()" value="mask">
+                <label for="mask">Mask</label>
+                <input type="radio" id="background" name="image_type" onclick="change_image_type()" value="background">
+                <label for="background">Background</label>
+                <input type="radio" id="full_fake" name="image_type" onclick="change_image_type()" value="full_fake">
+                <label for="full_fake">Fullsized fake</label>
+                <input type="radio" id="full_mask" name="image_type" onclick="change_image_type()" value="full_mask">
+                <label for="full_mask">Fullsized mask</label>
+            </form>
+    
+        </div> -->
+        <div class="container text-center" id="image-num-indicator">
+            <p id="counter">
+                
+            </p>
+    
+        </div>
 
-    <div class="container text-center" id="control">
-        <br>
-        <!-- <button class="btn btn-default" id="prev" onmousedown="" type='button'>Previous</button> -->
-        <button class="btn btn-default" id="next" onmousedown="" type='button'>Next</button>
     </div>
-    <!-- <div class="container text-center form-check">
-        <form name="image-type-form">
-            <input type="radio" id="fake" name="image_type" onclick="change_image_type()" value="fake" checked>
-            <label for="fake">Fake</label>
-            <input type="radio" id="mask" name="image_type" onclick="change_image_type()" value="mask">
-            <label for="mask">Mask</label>
-            <input type="radio" id="background" name="image_type" onclick="change_image_type()" value="background">
-            <label for="background">Background</label>
-            <input type="radio" id="full_fake" name="image_type" onclick="change_image_type()" value="full_fake">
-            <label for="full_fake">Fullsized fake</label>
-            <input type="radio" id="full_mask" name="image_type" onclick="change_image_type()" value="full_mask">
-            <label for="full_mask">Fullsized mask</label>
-        </form>
+    <div id = "finished-page" class="d-none">
+        <div class="card container mt-5 p-5 w-50">
+            <h1 class="my-3">
+                Thank you
+            </h1>
 
-    </div> -->
-    <div class="container text-center" id="image-num-indicator">
-        <p id="counter">
-            
-        </p>
+            <div class="my-3">
+                You have completed this HIT.
+
+            </div> 
+
+        </div>
+
+
 
     </div>
+    
     <script src="index.js"></script>
     
 </body>

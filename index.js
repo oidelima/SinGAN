@@ -1,9 +1,9 @@
-const NUM_SAMPLES = 20
+const NUM_SAMPLES = 3
 var base = "http://127.0.0.1:8000/Output/RandomSamples"
 var modes = ["SinGAN", "random_crop"]
-var backgrounds = ["2081085051",  "dan-woje-desertmix-surfacev2"] //"charlottesville-7-view1",
+var backgrounds = ["dan-woje-desertmix-surfacev2"] //"charlottesville-7-view1",
 var image_type = "fake";
-var run_name = "test"
+var run_name = "filter_fixed"
 var img_count = 0;
 var urls = init_urls();
 var start_time;
@@ -11,9 +11,12 @@ var image_url;
 var img = document.getElementById("img");
 var img_mask = document.getElementById("img-mask");
 img_mask.crossOrigin = "Anonymous";
-canvas = document.createElement('canvas');
+var canvas = document.createElement('canvas');
+var timer_duration = 5;
+var history_ = [];
+var stopTimer = false;
 
-img.onmousedown = GetCoordinates;
+img.onmousedown = canvasClick;
 // console.log(urls)
 
 
@@ -22,19 +25,36 @@ img.onmousedown = GetCoordinates;
 
 document.getElementById("next").addEventListener("click", () => {
     load_images();
-    start_time = new Date().getTime();
+    next_button = document.getElementById("next");
+    next_button.style.display = "none"
+    document.getElementById("console").className = "";
+    document.getElementById("console").innerHTML = "";
+    display = document.getElementById("timer");
+    stopTimer = false;
+    startTimer(timer_duration, display, outOfTime);
     //setTimeout(myFunction, 30000)
 });
 
-window.addEventListener('load', () => {
-    load_images();
-    start_time = new Date().getTime();
-    //setTimeout(myFunction, 30000)
+document.getElementById("start").addEventListener("click", () => {
+  document.getElementById("intro-page").className = "d-none"
+  document.getElementById("main-page").className = "d-inline"
+  load_images();
+  next_button = document.getElementById("next");
+  next_button.style.display = "none"
+  display = document.getElementById("timer");
+  stopTimer = false;
+  startTimer(timer_duration, display, outOfTime);
 });
 
-// function myFunction() {
-//     alert('Out of time');
-//   }
+// window.addEventListener('load', () => {
+//     load_images();
+//     next_button = document.getElementById("next");
+//     next_button.style.display = "none"
+//     display = document.getElementById("timer");
+//     stopTimer = false;
+//     startTimer(timer_duration, display, outOfTime);
+//     //setTimeout(myFunction, 30000)
+// });
 
 
 
@@ -58,11 +78,11 @@ function load_images(){
     urls.splice(index, 1)
 
 
-    document.getElementById("caption").innerHTML = image_url.split('/')[6]
+    // document.getElementById("caption").innerHTML = image_url.split('/')[6]
     img.src = image_url
 
-    var constraint_url = image_url.split("/")
-    constraint_url[constraint_url.length-2] = "mask"
+    constraint_url = image_url.split("/")
+    constraint_url[constraint_url.length-2] = "mask_ind"
     constraint_url = constraint_url.join("/")
     img_mask.src = constraint_url
    
@@ -73,86 +93,89 @@ function load_images(){
 
 }
 
-function FindPosition(oElement)
+function canvasClick(e)
 {
-  if(typeof( oElement.offsetParent ) != "undefined")
-  {
-    for(var posX = 0, posY = 0; oElement; oElement = oElement.offsetParent)
-    {
-      posX += oElement.offsetLeft;
-      posY += oElement.offsetTop;
-    }
-      return [ posX, posY ];
-    }
-    else
-    {
-      return [ oElement.x, oElement.y ];
-    }
-}
-
-function GetCoordinates(e)
-{
-
-  // var PosX = 0;
-  // var PosY = 0;
-  // var ImgPos;
-  // ImgPos = FindPosition(img);
-  // if (!e) var e = window.event;
-  // if (e.pageX || e.pageY)
-  // {
-  //   PosX = e.pageX;
-  //   PosY = e.pageY;
-  // }
-  // else if (e.clientX || e.clientY)
-  //   {
-  //     PosX = e.clientX + document.body.scrollLeft
-  //       + document.documentElement.scrollLeft;
-  //     PosY = e.clientY + document.body.scrollTop
-  //       + document.documentElement.scrollTop;
-  //   }
-  // PosX = PosX - ImgPos[0];
-  // PosY = PosY - ImgPos[1];
-
-  // var constraint_url = image_url.split("/")
-  // constraint_url[constraint_url.length-2] = "mask"
-  // constraint_url = constraint_url.join("/")
-  // img.src = constraint_url
-
-
   canvas.width = img.width;
   canvas.height = img.height;
   canvas.getContext('2d').drawImage(img_mask, 0, 0, img.width, img.height);
   var pixelData = canvas.getContext('2d').getImageData(event.offsetX, event.offsetY, 1, 1).data;
-  // img.src = image_url
 
-  // console.log("X = ", PosX);
-  // console.log("Y = ", PosY);
-  // console.log("Image width", img.width )
-  // console.log("Image height", img.height)
+  if (pixelData[0] > 0 && stopTimer == false){
+    document.getElementById("console").innerHTML = "You found the animal. Press next for the following image";
+    document.getElementById("console").className = "mb-3 alert alert-success";
+    next_button = document.getElementById("next");
+    next_button.style.display = "inline"
+    stopTimer = true;
+    var endTime = new Date();
+    var timeDiff = endTime - startTime; //in ms
+    timeDiff /= 1000;
+    var algorithm = image_url.split('/')[6]
+    history_.push([algorithm, timeDiff, image_url])
+
+    if (img_count === NUM_SAMPLES*2){
+      document.getElementById("main-page").className = "d-none"
+      document.getElementById("finished-page").className = "d-inline"
+    }
+    console.log(history_)
+    
+
+  }
   console.log(pixelData)
 }
 
 
+function startTimer(duration, display,callback) {
 
+  startTime = new Date();
 
+  var timer = duration;
 
-// function change_image_type(){
-//     image_type = document.querySelector('input[name="image_type"]:checked').value;
-//     load_images()
-// }
+  var myInterval = setInterval(function() {
 
-// function next_run(event){
-    
-//     if (event.target.id == "first-img") {
-//         if (left_run < runs.length -1) left_run+= 1;
-//         else left_run = 0
-//     }
-//     else if (event.target.id == "second-img"){
-//         if (right_run < runs.length -1) right_run+= 1;
-//         else right_run = 0
-//     } 
-//     load_images()
-// }
+    if (stopTimer === true){
+      clearInterval(myInterval);
+      return
+    }
+
+    minutes = parseInt(timer / 60, 10)
+    seconds = parseInt(timer % 60, 10);
+
+    minutes = minutes < 10 ? "0" + minutes : minutes;
+    seconds = seconds < 10 ? "0" + seconds : seconds;
+
+    display.textContent = "Time remaining: " + minutes + ":" + seconds;
+
+    if (--timer < 0) {
+      timer = duration;
+      
+      // clear the interal
+      clearInterval(myInterval);
+
+      if (img_count === NUM_SAMPLES*2){
+        document.getElementById("main-page").className = "d-none"
+        document.getElementById("finished-page").className = "d-inline"
+        return
+      }
+
+      // use the callback
+      if(callback) {
+          callback();
+      }
+      stopTimer = true;
+    }
+  }, 1000);
+}
+
+function outOfTime(){
+  next_button = document.getElementById("next");
+  next_button.style.display = "inline"
+  document.getElementById("console").innerHTML = "You ran out of time. Press next for the following image";
+  document.getElementById("console").className = "mb-3 alert alert-danger";
+  var algorithm = image_url.split('/')[6]
+  history_.push([algorithm, null, image_url])
+  console.log(history_)
+
+}
 
 
 
