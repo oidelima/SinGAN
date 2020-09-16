@@ -20,9 +20,9 @@ if __name__ == '__main__':
     parser.add_argument('--patch_size', type=int, default=96)
     parser.add_argument('--crop_size', type=int, default=250)
     parser.add_argument('--num_samples', type=int, default=20)
-    parser.add_argument('--mode', help='task to be done', default='train')
+    parser.add_argument('--mode', help='task to be done', default='style')
     parser.add_argument('--random_crop', action='store_true', help='enables random crop during training')
-    parser.add_argument('--batch_size',type=int, default=5)
+    parser.add_argument('--batch_size',type=int, default=1)
     
     
     opt = parser.parse_args()

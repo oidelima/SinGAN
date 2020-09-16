@@ -194,6 +194,8 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
         
         if opt.mode == 'train':
             dir2save = '%s/RandomSamples/%s/SinGAN/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
+        elif opt.mode == 'inpainting':
+            dir2save = '%s/RandomSamples/%s/inpainting/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
         else:
             dir2save = functions.generate_dir2save(opt)
         try:

@@ -11,6 +11,10 @@ import numpy as np
 import random
 from SinGAN.imresize import imresize
 import math
+from PIL import Image
+from torchvision import transforms
+from torch.autograd import Variable
+
 
 
 def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp):
@@ -31,11 +35,11 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     mask_source = torch.ones_like(mask_source)
 
     #ocean
-    # opt.eye_diam=4
-    # opt.eye_loc = (38, 78) #TODO ocean
-    # mask_source[:,0,:,:]  = (241/255 - 0.5)*2
-    # mask_source[:,1,:,:]  = (238/255 - 0.5)*2
-    # mask_source[:,2,:,:]  = (240/255 - 0.5)*2
+    opt.eye_diam=4
+    opt.eye_loc = (38, 78) #TODO ocean
+    mask_source[:,0,:,:]  = (241/255 - 0.5)*2
+    mask_source[:,1,:,:]  = (238/255 - 0.5)*2
+    mask_source[:,2,:,:]  = (240/255 - 0.5)*2
 
     #tetra_fish
     # opt.eye_diam = 4
@@ -52,11 +56,11 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     # mask_source[:,2,:,:]  = (184/255 - 0.5)*2
 
     # rabbit
-    opt.eye_diam = 4
-    opt.eye_loc = (60, 43) #TODO 
-    mask_source[:,0,:,:]  = (168/255 - 0.5)*2
-    mask_source[:,1,:,:]  = (176/255 - 0.5)*2
-    mask_source[:,2,:,:]  = (155/255 - 0.5)*2
+    # opt.eye_diam = 4
+    # opt.eye_loc = (60, 43) #TODO 
+    # mask_source[:,0,:,:]  = (168/255 - 0.5)*2
+    # mask_source[:,1,:,:]  = (176/255 - 0.5)*2
+    # mask_source[:,2,:,:]  = (155/255 - 0.5)*2
 
     
     constraint_ = functions.generate_eye_mask(opt, mask_, 0)
@@ -265,7 +269,10 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             
             # G_input = functions.make_input(noise, mask_in, eye_in, opt)       
             fake_background = netG(noise.detach(),prev)
-            fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
+            if opt.mode == "inpainting":
+                fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt, (height_init, width_init))
+            else:
+                fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
             
             # ref = fake_background.clone()
             # ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint) + constraint*mask_source
@@ -483,6 +490,7 @@ def train_paint(opt,Gs,Zs,reals,NoiseAmp,centers,paint_inject_scale):
     return
 
 
+
 def init_models(opt):
 
     #generator initialization:
@@ -503,3 +511,186 @@ def init_models(opt):
     # print(netD)
 
     return netD, netG
+
+
+
+def train_style(opt):
+    torch.cuda.set_device(opt.device)
+    
+    img_size = (188, 255)
+    prep = transforms.Compose([transforms.Resize(img_size),
+                            transforms.ToTensor(),
+                            transforms.Lambda(lambda x: x[torch.LongTensor([2,1,0])]), #turn to BGR
+                            transforms.Normalize(mean=[0.40760392, 0.45795686, 0.48501961], #subtract imagenet mean
+                                                    std=[1,1,1]),
+                            transforms.Lambda(lambda x: x.mul_(255)),
+                            ])
+    
+    prep_mask_source = transforms.Compose([transforms.Resize(opt.patch_size),
+                            transforms.ToTensor(),
+                            transforms.Lambda(lambda x: x[torch.LongTensor([2,1,0])]), #turn to BGR
+                            transforms.Normalize(mean=[0.40760392, 0.45795686, 0.48501961], #subtract imagenet mean
+                                                    std=[1,1,1]),
+                            transforms.Lambda(lambda x: x.mul_(255)),
+                            ])
+    
+    postpa = transforms.Compose([transforms.Lambda(lambda x: x.mul_(1./255)),
+                            transforms.Normalize(mean=[-0.40760392, -0.45795686, -0.48501961], #add imagenet mean
+                                                    std=[1,1,1]),
+                            transforms.Lambda(lambda x: x[torch.LongTensor([2,1,0])]), #turn to RGB
+                            ])
+    postpb = transforms.Compose([transforms.ToPILImage()])
+    
+    def postp(tensor): # to clip results in the range [0,1]
+        t = postpa(tensor)
+        t[t>1] = 1    
+        t[t<0] = 0
+        img = postpb(t)
+        return img
+    
+    vgg = models.VGG()
+    vgg.load_state_dict(torch.load('vgg_conv.pth'))
+    for param in vgg.parameters():
+        param.requires_grad = False
+    if torch.cuda.is_available():
+        vgg.cuda()
+    
+    
+    
+    # real_ = functions.read_image(opt)
+    # real = imresize(real_,opt.scale1,opt)
+    real = prep(Image.open('%s/%s' % (opt.input_dir,opt.input_name)))
+    real = Variable(real.unsqueeze(0).cuda())
+    mask = functions.read_mask(opt)
+    mask_source = Image.open('%s/%s' % ("Input/mask_sources",opt.mask_source))
+    mask_source = prep_mask_source(mask_source)
+    mask_source = mask_source.unsqueeze(0).cuda()
+    constraint = functions.read_mask(opt, "Input/custom_constraints", opt.mask_name) 
+    constraint = constraint * mask #* mask_source
+    # test_noise = torch.rand_like(real)  - torch.tensor([[-0.40760392, -0.45795686, -0.48501961]]).unsqueeze(-1).unsqueeze(-1).cuda()
+    # test_noise *= 255
+    opt_img = Variable(real.data.clone(), requires_grad=True)
+
+    
+    #test eye
+    mask_source = torch.ones_like(mask_source)
+
+    #ocean
+    opt.eye_diam=4
+    opt.eye_loc = (38, 78) #TODO ocean 
+    mask_source[:,0,:,:]  = 241 + 0.40760392
+    mask_source[:,1,:,:]  = 238 + 0.45795686
+    mask_source[:,2,:,:]  = 240 + 0.48501961
+
+    #tetra_fish
+    # opt.eye_diam = 4
+    # opt.eye_loc = (40, 75) #TODO 
+    # mask_source[:,0,:,:]  = (148/255 - 0.5)*2
+    # mask_source[:,1,:,:]  = (151/255 - 0.5)*2
+    # mask_source[:,2,:,:]  = (124/255 - 0.5)*2
+
+    #blackbird
+    # opt.eye_diam = 4
+    # opt.eye_loc = (28, 43) #TODO 
+    # mask_source[:,0,:,:]  = (255/255 - 0.5)*2
+    # mask_source[:,1,:,:]  = (231/255 - 0.5)*2
+    # mask_source[:,2,:,:]  = (184/255 - 0.5)*2
+
+    # rabbit
+    # opt.eye_diam = 4
+    # opt.eye_loc = (60, 43) #TODO 
+    # mask_source[:,0,:,:]  = (168/255 - 0.5)*2
+    # mask_source[:,1,:,:]  = (176/255 - 0.5)*2
+    # mask_source[:,2,:,:]  = (155/255 - 0.5)*2
+
+    
+    constraint = functions.generate_eye_mask(opt, mask, 0)
+
+
+    
+    # z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals,masks,constraints, mask_sources, crop_sizes, Gs,Zs,in_s,NoiseAmp,opt)
+
+
+    # G_curr = functions.reset_grads(G_curr,False)
+    # G_curr.eval()
+
+    style_layers = ['r11','r21','r31','r41', 'r51'] 
+    loss_layers = style_layers
+    loss_fns = [models.GramMSELoss()] * len(style_layers)
+    if torch.cuda.is_available():
+        loss_fns = [loss_fn.cuda() for loss_fn in loss_fns]
+        
+    #these are good weights settings:
+    style_weights = [1e3/n**2 for n in [64,128,256,512,512]]
+    weights = style_weights
+    
+    #compute optimization targets
+    style_targets = [models.GramMatrix()(A).detach() for A in vgg(real, style_layers)]
+    targets = style_targets
+
+    #run style transfer
+    max_iter = 1000
+    show_iter = 50
+    # optimizer = torch.optim.Adam(vgg.parameters(), lr=opt.lr_g, betas=(opt.beta1, 0.999))
+    optimizer = optim.LBFGS([opt_img]);
+
+   
+    n_iter=[0]
+
+    while n_iter[0] <= max_iter:
+
+        def closure():
+            optimizer.zero_grad()
+            fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, opt_img, mask, constraint, mask_source, opt)
+            # plt.imshow(fake.cpu().squeeze().permute(1,2,0).detach())
+        
+            # plt.imshow(postp(fake.data[0].cpu().squeeze()))
+            # plt.imshow((real/255).cpu().squeeze().permute(1,2,0).detach())
+            # plt.show()
+            out = vgg(fake, loss_layers)
+            layer_losses = [weights[a] * loss_fns[a](A, targets[a]) for a,A in enumerate(out)]
+            loss = sum(layer_losses)
+            loss.backward()
+            n_iter[0]+=1
+            #print loss
+            if n_iter[0]%show_iter == (show_iter-1):
+                print('Iteration: %d, loss: %f'%(n_iter[0]+1, loss.item()))
+    #             print([loss_layers[li] + ': ' +  str(l.data[0]) for li,l in enumerate(layer_losses)]) #loss of each layer
+            return loss
+        
+        optimizer.step(closure)
+        
+    #display result
+    # out_img = postp(opt_img.data[0].cpu().squeeze())
+    
+    dir2save = '%s/RandomSamples/%s/style/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
+    try:
+        os.makedirs(dir2save + "/fake")
+        os.makedirs(dir2save + "/background")
+        os.makedirs(dir2save + "/mask")
+        os.makedirs(dir2save + "/constraint")
+        os.makedirs(dir2save + "/mask_ind")
+
+    except OSError:
+        pass
+
+    for i in range(20):
+        fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, opt_img, mask, constraint, mask_source, opt)
+        fake = postp(fake.data[0].cpu().squeeze())
+        real_ = postp(real.data[0].cpu().squeeze())
+        opt_img_ = postp(opt_img.data[0].cpu().squeeze())
+        plt.imsave('%s/%s/%d.png' % (dir2save, "fake", i),  np.asarray(fake), vmin=0,vmax=1)
+        # plt.imsave('%s/%s/%d.png' % (dir2save, "fake", i), functions.convert_image_np(I_curr.detach()), vmin=0,vmax=1)
+        plt.imsave('%s/%s/%d.png' % (dir2save, "background", i), np.asarray(opt_img_), vmin=0,vmax=1)
+        plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind.detach()), vmin=0,vmax=1)
+        plt.imsave('%s/%s/%d.png' % (dir2save, "mask_ind", i), functions.convert_image_np(mask_ind.detach()),  cmap="gray")
+        plt.imsave('%s/%s/%d.png' % (dir2save, "constraint", i), functions.convert_image_np(constraint_filled.detach()), vmin=0,vmax=1)
+
+
+        
+    return
+
+
+
+
+
