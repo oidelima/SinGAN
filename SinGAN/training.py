@@ -26,6 +26,7 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     real = imresize(real_,opt.scale1,opt)
     
     mask_ = functions.read_mask(opt) 
+
     constraint = functions.read_mask(opt, "Input/custom_constraints", opt.mask_name) 
     mask_source = functions.read_image(opt, "Input/mask_sources", opt.mask_source)
     mask_source = nn.functional.interpolate(mask_source, size=(opt.patch_size, opt.patch_size))
@@ -629,7 +630,7 @@ def train_style(opt):
     targets = style_targets
 
     #run style transfer
-    max_iter = 1000
+    max_iter = 500
     show_iter = 50
     # optimizer = torch.optim.Adam(vgg.parameters(), lr=opt.lr_g, betas=(opt.beta1, 0.999))
     optimizer = optim.LBFGS([opt_img]);

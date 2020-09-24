@@ -451,6 +451,8 @@ def generate_dir2save(opt):
         dir2save = 'TrainedModels/%s/SinGAN/name=%s, scale_factor=%f,alpha=%d' % (opt.input_name[:-4],opt.run_name, opt.scale_factor_init,opt.alpha)
     if opt.mode == "inpainting":
         dir2save = 'TrainedModels/%s/inpainting/name=%s, scale_factor=%f,alpha=%d' % (opt.input_name[:-4],opt.run_name, opt.scale_factor_init,opt.alpha)
+    if opt.mode == "nvidia":
+        dir2save = 'TrainedModels/%s/nvidia/name=%s, scale_factor=%f,alpha=%d' % (opt.input_name[:-4],opt.run_name, opt.scale_factor_init,opt.alpha)
     elif (opt.mode == 'animation_train') :
         dir2save = 'TrainedModels/%s/scale_factor=%f_noise_padding' % (opt.input_name[:-4], opt.scale_factor_init)
     elif (opt.mode == 'paint_train') :
