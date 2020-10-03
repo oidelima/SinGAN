@@ -94,14 +94,9 @@ def imresize_mask(im,scale,opt):
 def imresize_mask_to_shape(im,output_shape,opt):
     
     im = torch2uint8_mask(im)
-    # im = numpy.array(Image.fromarray(im).resize())
 
     # im = cv2.resize(img, dsize=(54, 140), interpolation=cv2.INTER_CUBIC)
     im = imresize_in(im, output_shape=output_shape)
- 
-    # im[im>0.1] = 1
-    # im[im<=0.1] = 0
-    # im = im.round()
     im = im[:,:,:,None]
     im = im.transpose((3, 2, 0, 1))
     im = torch.from_numpy(im).double()

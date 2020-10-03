@@ -14,78 +14,54 @@ import math
 from PIL import Image
 from torchvision import transforms
 from torch.autograd import Variable
+import cv2
+import scipy
 
 
 
 def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp):
     
-    torch.cuda.set_device(opt.device)
     
+    # Loading input background image, normalizing and resizing to largest scale size
+    real = functions.read_image(opt)
+    real = imresize(real,opt.scale1,opt)
     
-    real_ = functions.read_image(opt)
-    real = imresize(real_,opt.scale1,opt)
+    # Loading masks and resizing so that biggest dimension is opt.patch_size 
+    mask = functions.read_mask(opt,"Input/body_masks",opt.mask_name) 
+    constraint = functions.read_mask(opt, "Input/constraints", opt.mask_name) 
     
-    mask_ = functions.read_mask(opt) 
-
-    constraint = functions.read_mask(opt, "Input/custom_constraints", opt.mask_name) 
-    mask_source = functions.read_image(opt, "Input/mask_sources", opt.mask_source)
-    mask_source = nn.functional.interpolate(mask_source, size=(opt.patch_size, opt.patch_size))
-    constraint_ = constraint * mask_ #* mask_source
+     # Loading image source for mask and resizing so that biggest dimension is opt.patch_size 
+    new_dim = (mask.size()[3], mask.size()[2])
+    mask_source = functions.read_image(opt, "Input/mask_sources", opt.mask_name[:-3]+"jpg", size=new_dim)
     
-    #test eye
-    mask_source = torch.ones_like(mask_source)
+    # Making sure that the constraint doesn't lie outside of the body mask
+    constraint = constraint * mask #* mask_source
+   
+    # #test eye
+    # mask_source = torch.ones_like(mask_source)
 
-    #ocean
-    opt.eye_diam=4
-    opt.eye_loc = (38, 78) #TODO ocean
-    mask_source[:,0,:,:]  = (241/255 - 0.5)*2
-    mask_source[:,1,:,:]  = (238/255 - 0.5)*2
-    mask_source[:,2,:,:]  = (240/255 - 0.5)*2
-
-    #tetra_fish
-    # opt.eye_diam = 4
-    # opt.eye_loc = (40, 75) #TODO 
-    # mask_source[:,0,:,:]  = (148/255 - 0.5)*2
-    # mask_source[:,1,:,:]  = (151/255 - 0.5)*2
-    # mask_source[:,2,:,:]  = (124/255 - 0.5)*2
-
-    #blackbird
-    # opt.eye_diam = 4
-    # opt.eye_loc = (28, 43) #TODO 
-    # mask_source[:,0,:,:]  = (255/255 - 0.5)*2
-    # mask_source[:,1,:,:]  = (231/255 - 0.5)*2
-    # mask_source[:,2,:,:]  = (184/255 - 0.5)*2
-
-    # rabbit
-    # opt.eye_diam = 4
-    # opt.eye_loc = (60, 43) #TODO 
-    # mask_source[:,0,:,:]  = (168/255 - 0.5)*2
-    # mask_source[:,1,:,:]  = (176/255 - 0.5)*2
-    # mask_source[:,2,:,:]  = (155/255 - 0.5)*2
-
+    # #ocean
+    # opt.eye_diam=4
+    # opt.eye_loc = (38, 78) #TODO ocean
+    # mask_source[:,0,:,:]  = (241/255 - 0.5)*2
+    # mask_source[:,1,:,:]  = (238/255 - 0.5)*2
+    # mask_source[:,2,:,:]  = (240/255 - 0.5)*2
     
-    constraint_ = functions.generate_eye_mask(opt, mask_, 0)
+    # constraint_ = functions.generate_eye_mask(opt, mask_, 0)
 
-
-    
     in_s = 0
     scale_num = 0
     reals = functions.create_pyramid(real,reals, opt)
-    masks = functions.create_pyramid(mask_,masks,opt, mode = "mask")
-    constraints = functions.create_pyramid(constraint_, constraints,opt, mode = "mask")
+    masks = functions.create_pyramid(mask,masks,opt, mode = "mask")
+    constraints = functions.create_pyramid(constraint, constraints,opt, mode = "mask")
     mask_sources = functions.create_pyramid(mask_source, mask_sources,opt)
     
-    
-     
+
     nfc_prev = 0
     
     opt.mask_alpha = 0
 
-    
-    
-    
-    
-    # while scale_num<7: 
+
     while scale_num<opt.stop_scale+1: 
         opt.nfc = min(opt.nfc_init * pow(2, math.floor(scale_num / 4)), 128)
         opt.min_nfc = min(opt.min_nfc_init * pow(2, math.floor(scale_num / 4)), 128)
@@ -119,14 +95,14 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
         Zs.append(z_curr)
         NoiseAmp.append(opt.noise_amp)
 
-        torch.save(Zs, '%s/Zs.pth' % (opt.out_))
-        torch.save(Gs, '%s/Gs.pth' % (opt.out_))
-        torch.save(reals, '%s/reals.pth' % (opt.out_))
-        torch.save(NoiseAmp, '%s/NoiseAmp.pth' % (opt.out_))
-        torch.save(masks, '%s/masks.pth' % (opt.out_))
-        torch.save(constraints, '%s/constraints.pth' % (opt.out_))
-        torch.save(mask_sources, '%s/mask_sources.pth' % (opt.out_))
-        torch.save(crop_sizes, '%s/crop_sizes.pth' % (opt.out_))
+        # torch.save(Zs, '%s/Zs.pth' % (opt.out_))
+        # torch.save(Gs, '%s/Gs.pth' % (opt.out_))
+        # torch.save(reals, '%s/reals.pth' % (opt.out_))
+        # torch.save(NoiseAmp, '%s/NoiseAmp.pth' % (opt.out_))
+        # torch.save(masks, '%s/masks.pth' % (opt.out_))
+        # torch.save(constraints, '%s/constraints.pth' % (opt.out_))
+        # torch.save(mask_sources, '%s/mask_sources.pth' % (opt.out_))
+        # torch.save(crop_sizes, '%s/crop_sizes.pth' % (opt.out_))
 
         scale_num+=1
         nfc_prev = opt.nfc
@@ -140,17 +116,6 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
     
     
     real = reals[len(Gs)]
-    # crop_size =  crop_sizes[len(Gs)]
-    # fixed_crop = real_fullsize[:,:,0:crop_size,0:crop_size].repeat(opt.batch_size, 1, 1, 1)
-    # plt.imsave('%s/fixed_alpha_crop.png' %  (opt.outf), functions.convert_image_np(fixed_crop[0:1, :, :, :].detach()))
-    
-    # if opt.random_crop:
-    #     real, _, _ = functions.random_crop(real_fullsize.clone(), crop_size, opt)
-    # else:
-    #     real = real_fullsize.clone()  
-    #     real = real.repeat(opt.batch_size, 1, 1, 1)
-        
-        
     mask = masks[len(Gs)]
     constraint = constraints[len(Gs)]
     mask_source = mask_sources[len(Gs)]
@@ -211,16 +176,6 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
         # (1) Update D network: maximize D(x) + D(G(z))
         ###########################
         for j in range(opt.Dsteps):
-            # # train with real
-            # netD.zero_grad()
-            # output = netD(real).to(opt.device)
-            # real_output = output.clone()
-            # #D_real_map = output.detach()
-            # errD_real = -output.mean()#-a
-            # errD_real.backward(retain_graph=True)
-            # D_x = -errD_real.item()
-
-           
 
             # train with fake
             if (j==0) & (epoch == 0):
@@ -239,17 +194,14 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
                     z_prev = m_image(z_prev)
                     prev = z_prev
                 else:
-                    # prev = functions.draw_concat(Gs,Zs,reals, masks,constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                     prev = functions.draw_concat(Gs,Zs,reals,masks, constraints, mask_sources,NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                     prev = m_image(prev)
-                    # z_prev = functions.draw_concat(Gs,Zs,reals,masks,constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rec',m_noise,m_image,opt)
                     z_prev = functions.draw_concat(Gs,Zs,reals,masks, constraints, mask_sources,NoiseAmp,in_s,'rec',m_noise,m_image,opt)
                     criterion = nn.MSELoss()
                     RMSE = torch.sqrt(criterion(real, z_prev))
                     opt.noise_amp = opt.noise_amp_init *RMSE
                     z_prev = m_image(z_prev)
             else:
-                # prev = functions.draw_concat(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                 prev = functions.draw_concat(Gs,Zs,reals,masks, constraints, mask_sources,NoiseAmp,in_s,'rand',m_noise,m_image,opt)
                 prev = m_image(prev)
                 
@@ -264,50 +216,34 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             else:
                 noise = opt.noise_amp*noise_+prev
 
-            # surroundings = real.clone()
-            # surroundings[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *= (1-mask)
-            # functions.show_image(surroundings[0,:,:,:])
-            
-            # G_input = functions.make_input(noise, mask_in, eye_in, opt)       
+            # G_input = functions.make_input(noise, mask_in, eye_in, opt)  
+                 
             fake_background = netG(noise.detach(),prev)
+            
             if opt.mode == "inpainting":
                 fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt, (height_init, width_init))
             else:
                 fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
             
-            # ref = fake_background.clone()
-            # ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = ref[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint) + constraint*mask_source
             
             mask_ind = torch.round(mask_ind)
 
             weights = torch.ones(1, 1, opt.receptive_field, opt.receptive_field)/(opt.receptive_field**2)
             mask_down = nn.functional.conv2d(mask_ind.detach(), weights).to(opt.device)
-            # const_down = nn.functional.conv2d(constraint_ind[:,0:1,:,:], weights).to(opt.device)
 
-            # BCE_loss = nn.BCELoss().cuda()
-            # from torch.autograd import Variable
-            
              # train with real
             netD.zero_grad()
             output = netD(real).to(opt.device)
             real_output = output.detach()
-            #D_real_map = output.detach()
-            # errD_real = -output.mean()#-a
-            # real_loss = BCE_loss(output,Variable(torch.ones(output.size()).cuda()))
-         
+            
             errD_real = -(output*mask_down).mean()
-            # errD_real = -(output*mask_down).sum()/mask_down.sum()
+
             errD_real.backward(retain_graph=True)
             D_x = -errD_real.item()
 
-            # output = netD(fake.detach())
-            # fake=fake*mask_ind.to(opt.device)
+
             output = netD(fake.detach())
 
-            # fake_loss = BCE_loss(output*mask_down,Variable(1-mask_down))
-
-            # errD_fake = (output*mask_down  - (output*(1-mask_down))).mean()#/mask_down.sum() - (output*(1-mask_down)).sum()/mask_down.sum() #(output*mask_down).sum()/mask_down.sum() #(output*const_down).sum()/const_down.sum()
-            # errD_fake = output.mean()
             errD_fake = (output*mask_down).mean()
             errD_fake.backward(retain_graph=True)
             D_G_z = output.mean().item()
@@ -316,8 +252,7 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             gradient_penalty.backward()
 
             errD = errD_real + errD_fake + gradient_penalty
-            # loss_D = (real_loss + fake_loss)/2
-            # loss_D.backward(retain_graph=True)
+
             optimizerD.step()
 
 
@@ -331,18 +266,13 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
 
             netG.zero_grad()
             output = netD(fake)
-            # gen_loss = BCE_loss(output*mask_down,Variable(mask_down))
-            # gen_loss.backward(retain_graph=True)
-            
 
-            L1_eye_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).mean()
+            L1_constraint_loss = 10*abs((fake_background[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width]-mask_source)*constraint.to(opt.device)).mean()
             # errG = -(output*mask_down  - (output*(1-mask_down))).mean()
-            errG = -(output*mask_down).mean() + L1_eye_loss
-            # errG = - (output).mean()#+ L1_eye_loss#(output*mask_down).sum()/mask_down.sum()  #-(output*const_down).sum()/const_down.sum() 
-            # errG = -(output*mask_down).mean() #+ (output*(1-mask_down)).sum()/(1-mask_down).sum() 
+            errG = -(output*mask_down).mean() + L1_constraint_loss
+
             errG.backward(retain_graph=True)
-            
-            
+
             if alpha!=0:
                 loss = nn.MSELoss()
                 if opt.mode == 'paint_train':
@@ -352,11 +282,6 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
                 # input_opt = functions.make_input(Z_opt, mask_in, eye_in, opt)
                 rec_loss = alpha*loss(netG(Z_opt.detach(),z_prev),real)
                 
-                # print(mask_in)
-                # plt.imshow((netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in).cpu().detach().squeeze(), cmap="gray")
-                # plt.show()
-                # plt.imshow((fixed_crop[:, :, :mask_height, :mask_width]*mask_in).cpu().detach().squeeze(), cmap="gray")
-                # plt.show()
                 #rec_loss = alpha*loss(netG(input_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask_in,real[:, :, :mask_height, :mask_width]*mask_in)
                 # rec_loss = alpha*loss(netG(Z_opt.detach(),z_prev)[:, :, :mask_height, :mask_width]*mask,fixed_crop[:, :, :mask_height, :mask_width]*mask)
                 
@@ -373,7 +298,7 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
             optimizerG.step()
 
         
-        # errG2plot.append(errG.detach()+rec_loss)
+        errG2plot.append(errG.detach()+rec_loss)
         D_real2plot.append(D_x)
         D_fake2plot.append(D_G_z)
         z_opt2plot.append(rec_loss)
@@ -383,21 +308,15 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
 
         if epoch % 250 == 0 or epoch == (opt.niter-1):
 
-            
-
             plt.imsave('%s/fake_sample_%s.png' %  (opt.outf, epoch), functions.convert_image_np(fake[0:1, :, :, :].detach()))
             plt.imsave('%s/fake_indicator_%s.png' %  (opt.outf, epoch), functions.convert_image_np(fake_ind[0:1, :, :, :].detach()))
             plt.imsave('%s/constraint_indicator_%s.png' %  (opt.outf, epoch), functions.convert_image_np(constraint_filled.detach()))
             plt.imsave('%s/background_%s.png' %  (opt.outf, epoch ), functions.convert_image_np(fake_background[0:1, :, :, :].detach()))
-            # plt.imsave('%s/ref_%s.png' %  (opt.outf, epoch ), functions.convert_image_np(ref[0:1, :, :, :].detach()))
             plt.imsave('%s/fake_discriminator_heat_map_%s.png' %  (opt.outf, epoch), output[0, -1, :, :].detach().cpu().numpy())
             plt.imsave('%s/real_discriminator_heat_map_%s.png' %  (opt.outf, epoch), real_output[0, -1, :, :].detach().cpu().numpy())
             plt.imsave('%s/prev_%s.png' %  (opt.outf, epoch),functions.convert_image_np(prev[0:1, :, :, :].detach()))
-            # plt.imsave('%s/eye_output_%s.png' %  (opt.outf, epoch), eye_output[0, -1, :, :].detach().cpu().numpy())
-            # plt.imsave('%s/diff_%s.png' %  (opt.outf, epoch), diff[0, -1, :, :].detach().cpu().numpy())
-            # plt.imsave('%s/fake_with_eye%s.png' %  (opt.outf, epoch), functions.convert_image_np(fake_with_mask[0:1, :, :, :].detach()))
-     
 
+    
             plt.plot(errD2plot)
             plt.savefig('%s/errD.png' %  (opt.outf))
             plt.close()
@@ -433,63 +352,10 @@ def train_single_scale(netD,netG,reals,masks, constraints, mask_sources, crop_si
         schedulerD.step()
         schedulerG.step()
         
-        if opt.random_crop:
-            real, _, _ = functions.random_crop(real_fullsize, crop_size, opt)  #randomly find crop in image
-        
 
     functions.save_networks(netG,netD,z_opt,opt)
 
     return z_opt,in_s,netG 
-
-
-def train_paint(opt,Gs,Zs,reals,NoiseAmp,centers,paint_inject_scale):
-    in_s = torch.full(reals[0].shape, 0, device=opt.device)
-    scale_num = 0
-    nfc_prev = 0
-
-    while scale_num<opt.stop_scale+1:
-        if scale_num!=paint_inject_scale:
-            scale_num += 1
-            nfc_prev = opt.nfc
-            continue
-        else:
-            opt.nfc = min(opt.nfc_init * pow(2, math.floor(scale_num / 4)), 128)
-            opt.min_nfc = min(opt.min_nfc_init * pow(2, math.floor(scale_num / 4)), 128)
-
-            opt.out_ = functions.generate_dir2save(opt)
-            opt.outf = '%s/%d' % (opt.out_,scale_num)
-            try:
-                os.makedirs(opt.outf)
-            except OSError:
-                    pass
-
-            #plt.imsave('%s/in.png' %  (opt.out_), functions.convert_image_np(real), vmin=0, vmax=1)
-            #plt.imsave('%s/original.png' %  (opt.out_), functions.convert_image_np(real_), vmin=0, vmax=1)
-            plt.imsave('%s/in_scale.png' %  (opt.outf), functions.convert_image_np(reals[scale_num]), vmin=0, vmax=1)
-
-            D_curr,G_curr = init_models(opt)
-
-            z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals[:scale_num+1],Gs[:scale_num],Zs[:scale_num],in_s,NoiseAmp[:scale_num],opt,centers=centers)
-
-            G_curr = functions.reset_grads(G_curr,False)
-            # G_curr.eval()
-            D_curr = functions.reset_grads(D_curr,False)
-            # D_curr.eval()
-
-            Gs[scale_num] = G_curr
-            Zs[scale_num] = z_curr
-            NoiseAmp[scale_num] = opt.noise_amp
-
-            torch.save(Zs, '%s/Zs.pth' % (opt.out_))
-            torch.save(Gs, '%s/Gs.pth' % (opt.out_))
-            torch.save(reals, '%s/reals.pth' % (opt.out_))
-            torch.save(NoiseAmp, '%s/NoiseAmp.pth' % (opt.out_))
-
-            scale_num+=1
-            nfc_prev = opt.nfc
-        del D_curr,G_curr
-    return
-
 
 
 def init_models(opt):

@@ -15,6 +15,7 @@ import random
 from sklearn.cluster import KMeans
 import scipy
 from PIL import Image, ImageDraw
+import cv2
 
 
 
@@ -128,7 +129,7 @@ def move_to_cpu(t):
     return t
 
 def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
-    #print real_data.size()
+
     alpha = torch.rand(1, 1)
     alpha = alpha.expand(real_data.size())
     alpha = alpha.to(device)#cuda() #gpu) #if use_cuda else alpha
@@ -136,25 +137,27 @@ def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
     interpolates = alpha * real_data + ((1 - alpha) * fake_data)
 
 
-    interpolates = interpolates.to(device)#.cuda()
+    interpolates = interpolates.to(device)
     interpolates = torch.autograd.Variable(interpolates, requires_grad=True)
 
     disc_interpolates = netD(interpolates)
 
 
     gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
-                              grad_outputs=torch.ones(disc_interpolates.size()).to(device),#.cuda(), #if use_cuda else torch.ones(
-                                  #disc_interpolates.size()),
+                              grad_outputs=torch.ones(disc_interpolates.size()).to(device),
                               create_graph=True, retain_graph=True, only_inputs=True)[0]
-    #LAMBDA = 1
+
     gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * LAMBDA
     return gradient_penalty
 
-def read_image(opt, input_dir=None, input_name=None):
+def read_image(opt, input_dir=None, input_name=None, size=None):
     if input_dir and input_name: 
         x = img.imread('%s/%s' % (input_dir,input_name))
     else: 
         x = img.imread('%s/%s' % (opt.input_dir,opt.input_name))
+
+    if size:
+        x = cv2.resize(x, size, interpolation = cv2.INTER_NEAREST)
     x = np2torch(x,opt)
     x = x[:,0:3,:,:]
     return x
@@ -180,7 +183,7 @@ def read_mask(opt, mask_dir=None, mask_name=None):
     #x = img.imread('%s/%s' % (opt.mask_dir,opt.mask_name))
     if mask_dir and mask_name: x = Image.open('%s/%s' % (mask_dir,mask_name))
     else: x = Image.open('%s/%s' % (opt.mask_dir,opt.mask_name))
-    x = np.array(x)
+    x = np.array(x)[:,:,0] #png masks have 4 channels. Only get first channel
     x = preprocess_mask(x, opt) 
     x = x[:,:,None,None]
     x = x.transpose((3, 2, 0, 1))
@@ -290,6 +293,7 @@ def pad_mask(mask, input_size):
     mask = torch.nn.functional.pad(mask, p2d, "constant", 0)
     return mask
 
+
 # def make_input(noise, mask, eye, opt):
 #     noise_height, noise_width = noise.size()[2], noise.size()[3] 
 #     mask = mask.repeat(opt.batch_size, 1, 1, 1)
@@ -307,30 +311,37 @@ def pad_mask(mask, input_size):
 #     G_input = noise
 #     return G_input                 
 
+
 def preprocess_mask(im, opt):
     # Pads mask to make it square and then resizes
     h = im.shape[0]
     w = im.shape[1]
+    
+    scale = opt.patch_size / max(h, w)
+    new_dim = (int(w*scale),int(h*scale))
+    resized = cv2.resize(im, new_dim, interpolation = cv2.INTER_NEAREST)
+    
 
-    if h > w:
-        diff = h - w
-        if diff%2 == 0:
-            new_img = np.pad(im, ((0, 0), (diff // 2, diff // 2)), mode='constant')
-        else:
-            new_img = np.pad(im, ((0, 0), (diff // 2, diff // 2 + 1)), mode='constant')
-    elif w > h:
-        diff = w - h
-        if diff%2 == 0:
-            new_img = np.pad(im, ((diff // 2, diff // 2), (0, 0)), mode='constant')
-        else:
-            new_img = np.pad(im, ((diff // 2, diff // 2 + 1), (0, 0)), mode='constant')
-    else: # already square
-        new_img = im
+    # if h > w:
+    #     diff = h - w
+    #     if diff%2 == 0:
+    #         new_img = np.pad(im, ((0, 0), (diff // 2, diff // 2)), mode='constant')
+    #     else:
+    #         new_img = np.pad(im, ((0, 0), (diff // 2, diff // 2 + 1)), mode='constant')
+    # elif w > h:
+    #     diff = w - h
+    #     if diff%2 == 0:
+    #         new_img = np.pad(im, ((diff // 2, diff // 2), (0, 0)), mode='constant')
+    #     else:
+    #         new_img = np.pad(im, ((diff // 2, diff // 2 + 1), (0, 0)), mode='constant')
+    # else: # already square
+    #     new_img = im
     # fill in small holes
-    new_img = scipy.ndimage.morphology.binary_dilation(new_img, iterations=4).astype(np.uint8)
-    pil_im = Image.fromarray(new_img * 255.0)
-    pil_im.thumbnail((opt.patch_size, opt.patch_size), Image.NEAREST)
-    return np.array(pil_im) / 255.0
+    # new_img = scipy.ndimage.morphology.binary_dilation(new_img, iterations=4).astype(np.uint8)
+    # pil_im = Image.fromarray(new_img * 255.0)
+    # pil_im.thumbnail((opt.patch_size, opt.patch_size), Image.NEAREST)
+
+    return resized / 255.0
 
     
 def read_image_dir(dir,opt):
@@ -552,67 +563,6 @@ def dilate_mask(mask,opt):
     return mask
 
 
-# def draw_concat(Gs,Zs, reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,in_s,mode,m_noise,m_image,opt, test=None):
-#     G_z = in_s
-
-#     # if opt.random_crop:
-#     #     reals = crops # use crop sizes if cropping
-    
-
-#     if len(Gs) > 0:
-#         if mode == 'rand':
-#             count = 0
-#             pad_noise = int(((opt.ker_size-1)*opt.num_layer)/2)
-#             if opt.mode == 'animation_train':
-#                 pad_noise = 0
-#             for G,Z_opt, size_curr,size_next, mask_curr, constraint_curr, noise_amp, mask_source in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp, mask_sources):
-                
-#                 # im_height, im_width = size_curr, size_curr
-#                 # mask_height, mask_width = mask_curr.size()[2], mask_curr.size()[3] 
-#                 # height_init = (im_height - mask_height)//2
-#                 # width_init = (im_width - mask_width)//2
-
-#                 z = generate_noise([opt.nc_z, Z_opt.shape[2] - 2 * pad_noise, Z_opt.shape[3] - 2 * pad_noise], device=opt.device,num_samp=opt.batch_size)
-#                 z = m_noise(z)
-    
-#                 G_z = m_image(G_z).to(opt.device)
-
-#                 z_in = noise_amp*z+G_z
- 
-#                 G_z = G(z_in.detach(),G_z)
-                
-#                 # G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint_curr) + constraint_curr*mask_source
-
-#                 # show_image(G_z[0,:,:,:])
-
-
-#                 G_z = batch_imresize(G_z,(size_next, size_next),opt)    
-                
-                     
-#                 count += 1
-#         if mode == 'rec':
-#             count = 0
-#             for G,Z_opt,size_curr,size_next,mask_curr, constraint_curr, noise_amp, mask_source in zip(Gs,Zs,crop_sizes,crop_sizes[1:], masks, constraints, NoiseAmp, mask_sources):
-                
-#                 # im_height, im_width = size_curr, size_curr
-#                 # mask_height, mask_width = mask_curr.size()[2], mask_curr.size()[3] 
-#                 # height_init = (im_height - mask_height)//2
-#                 # width_init = (im_width - mask_width)//2
-                
-#                 G_z = m_image(G_z).to(opt.device)
-#                 z_in = noise_amp*Z_opt+G_z
-#                 # G_input = make_input(z_in, mask_curr, eye_curr, opt)
-#                 G_z = G(z_in.detach(),G_z)
-#                 # G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] = G_z[:,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] * (1-constraint_curr) + constraint_curr*mask_source
-                
-#                 G_z = batch_imresize(G_z,(size_next, size_next),opt)
-
-#                 #if count != (len(Gs)-1):
-#                 #    G_z = m_image(G_z)
-#                 count += 1
-
-#     return G_z.to(opt.device)
-
 def draw_concat(Gs,Zs,reals, masks, constraints, mask_sources, NoiseAmp,in_s,mode,m_noise,m_image,opt):
     G_z = in_s
     if len(Gs) > 0:
@@ -661,7 +611,13 @@ def draw_concat(Gs,Zs,reals, masks, constraints, mask_sources, NoiseAmp,in_s,mod
 
 
 def show_image(image):
-    plt.imshow(image.cpu().permute(1,2,0).detach().squeeze())
+    
+    if len(image.squeeze().shape) > 2:
+        image = denorm(image.detach().clone())
+        plt.imshow(image.cpu().squeeze().permute(1,2,0).detach())
+    else:
+        plt.imshow(image.cpu().squeeze().detach())
+    
     plt.show()
 
 

@@ -176,21 +176,15 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
         # G_input = functions.make_input(noise, masks[-1], eye, opt)
         fake_background = Gs[-1](noise.detach(),prev)
 
-        
-
-        # if opt.random_crop:
-        #     crop_size =  crop_sizes[-1]
-        #     crop, h_idx, w_idx = functions.random_crop(real, crop_size, opt)
-
-            
-        #     I_curr, fake_ind, constraint_ind, _, constraint_filled = functions.gen_fake(crop, fake_background, mask, constraint, mask_source, opt)
-
-        #     full_fake = reals[-1].clone()
-        #     full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr[:1,:,:,:]
-        #     full_mask = torch.zeros_like(full_fake)
-        #     full_mask[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = fake_ind[:1, :, :, :]
-        # else:
         I_curr, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask,constraint,mask_source, opt)
+        
+        #Making indicator for where the shape is for MTURK users
+        dilated = torch.tensor(scipy.ndimage.morphology.binary_dilation(mask_ind,iterations=1)).to(mask_ind)
+        border = (dilated-mask_ind).to(opt.device).round()
+        border_colored= torch.zeros_like(I_curr)
+        border_colored[:,0:1,:,:] = border 
+        border_colored[:,1:,:,:] = -border 
+        border_ind = I_curr * (1-border)  +border_colored
         
         if opt.mode == 'train':
             dir2save = '%s/RandomSamples/%s/SinGAN/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
@@ -205,9 +199,8 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
             os.makedirs(dir2save + "/constraint")
             os.makedirs(dir2save + "/prev")
             os.makedirs(dir2save + "/mask_ind")
-            # if opt.random_crop:
-            #     os.makedirs(dir2save + "/full_fake")
-            #     os.makedirs(dir2save + "/full_mask")
+            os.makedirs(dir2save + "/border_ind")
+
             
         except OSError:
             pass
@@ -218,6 +211,7 @@ def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, N
             plt.imsave('%s/%s/%d.png' % (dir2save, "constraint", i), functions.convert_image_np(constraint_filled.detach()))
             plt.imsave('%s/%s/%d.png' % (dir2save, "prev", i), functions.convert_image_np(prev[:1, :, :, :].detach()))
             plt.imsave('%s/%s/%d.png' % (dir2save, "mask_ind", i), functions.convert_image_np(mask_ind.detach()), cmap="gray")
+            plt.imsave('%s/%s/%d.png' % (dir2save, "border_ind", i), functions.convert_image_np(border_ind.detach()))
             # if opt.random_crop:
             #     plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()))
             #     plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()))
