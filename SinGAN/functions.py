@@ -157,7 +157,8 @@ def read_image(opt, input_dir=None, input_name=None, size=None):
         x = img.imread('%s/%s' % (opt.input_dir,opt.input_name))
 
     if size:
-        x = cv2.resize(x, size, interpolation = cv2.INTER_NEAREST)
+        x = cv2.GaussianBlur(x,(0,0),0.8)
+        x = cv2.resize(x, size, interpolation = cv2.INTER_LINEAR)
     x = np2torch(x,opt)
     x = x[:,0:3,:,:]
     return x
@@ -200,25 +201,24 @@ def generate_eye_mask(opt, mask, level):
     
     im_height, im_width = mask.size()[2], mask.size()[3]
     # Make eye constraint mask
-    eye_diam = opt.eye_diam
-    eye = Image.new('RGB', (mask.size()[2], mask.size()[3]))
-    draw = ImageDraw.Draw(eye)
-    # opt.eye_loc = find_valid_eye_location(opt, eye_diam, mask)
-    
-    print("EYE LOC: ", opt.eye_loc)
-    eye_loc = opt.eye_loc
+    eye_diam = 7
+    count = 0
+    while True:
+        eye = Image.new('RGB', (im_width, im_height))
+        draw = ImageDraw.Draw(eye)
+        eye_loc = (random.randint(0, im_height-eye_diam), random.randint(0, im_width-eye_diam))
+        draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
+        eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))/255.0
 
-    draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
-    eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))
-    eye[eye>0] = 1 
-    
-    
-    if not(opt.not_cuda):
-        eye = move_to_gpu(eye, opt)
-        eye = eye.unsqueeze(0)
+        if not(opt.not_cuda):
+            eye = move_to_gpu(eye, opt)
+            eye = eye.unsqueeze(0)
+            
         
-    
-    eye = imresize_mask(eye,scale,opt)
+        eye = imresize_mask(eye,scale,opt)
+        
+        if eye.sum() == (eye*mask).sum():
+            break
     
     return eye
 

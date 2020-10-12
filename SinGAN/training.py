@@ -34,8 +34,10 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     new_dim = (mask.size()[3], mask.size()[2])
     mask_source = functions.read_image(opt, "Input/mask_sources", opt.mask_name[:-3]+"jpg", size=new_dim)
     
+   
+    
     # Making sure that the constraint doesn't lie outside of the body mask
-    constraint = constraint * mask #* mask_source
+    # constraint = constraint * mask #* mask_source
    
     # #test eye
     # mask_source = torch.ones_like(mask_source)
@@ -47,7 +49,8 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     # mask_source[:,1,:,:]  = (238/255 - 0.5)*2
     # mask_source[:,2,:,:]  = (240/255 - 0.5)*2
     
-    # constraint_ = functions.generate_eye_mask(opt, mask_, 0)
+    constraint_ = functions.generate_eye_mask(opt, mask, 0)
+    constraint = constraint_ * mask #* mask_source
 
     in_s = 0
     scale_num = 0
