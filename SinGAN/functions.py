@@ -233,7 +233,7 @@ def find_valid_eye_location(opt, eye_diam, mask):
         except:
             pass
 
-def gen_fake(real, fake_background, mask, constraint, mask_source, opt, position = None):
+def gen_fake(real, fake_background, mask, constraint, mask_source, opt, position = None, no_constraint=False):
        
     im_height, im_width = real.size()[2], real.size()[3] 
     mask_height, mask_width = mask.size()[2], mask.size()[3] 
@@ -263,7 +263,12 @@ def gen_fake(real, fake_background, mask, constraint, mask_source, opt, position
         #                                                                     + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
         #                                                                     + constraint.to(opt.device)*mask_source 
         
-        fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
+        if no_constraint:
+            fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask) \
+                                                                            + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
+                                                                           
+        else:
+            fake[i,:,h_loc:h_loc + mask_height ,w_loc:w_loc + mask_width] = fake_background[i,:,height_init:height_init+mask_height ,width_init:width_init + mask_width] *(mask)*(1-constraint) \
                                                                             + real[i,:,h_loc:h_loc+mask_height ,w_loc:w_loc +mask_width]*(1-mask) \
                                                                             + constraint.to(opt.device)*mask_source 
 

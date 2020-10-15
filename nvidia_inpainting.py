@@ -25,6 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size',type=int, default=1)
     
     
+    
     opt = parser.parse_args()
     opt = functions.post_config(opt)
     dir2save = functions.generate_dir2save(opt)
@@ -55,74 +56,43 @@ if __name__ == '__main__':
 
         LAMBDA_DICT = {
             'valid': 1.0, 'hole': 6.0, 'tv': 0.1, 'prc': 0.05, 'style': 120.0}
-
-
+        
+    
         real = functions.read_image(opt)
         functions.adjust_scales2image(real, opt)
         # torch.cuda.set_device(opt.device)
-    
-    
+
         real_ = functions.read_image(opt)
         real = imresize(real_,opt.scale1,opt)
+        orig_size = (real.shape[2], real.shape[3])
         # real = imresize_to_shape(real_,(256, 256),opt)
 
         
-        mask_ = functions.read_mask(opt) 
+        mask = functions.read_mask(opt,"Input/body_masks",opt.mask_name) 
+        # constraint = functions.read_mask(opt, "Input/constraints", opt.mask_name)
+        # mask_ = functions.read_mask(opt) 
         # mask_ = imresize_mask_to_shape(mask_, (256, 256), opt)
 
-        
-        constraint = functions.read_mask(opt, "Input/custom_constraints", opt.mask_name) 
-        mask_source = functions.read_image(opt, "Input/mask_sources", opt.mask_source)
-        mask_source = nn.functional.interpolate(mask_source, size=(opt.patch_size, opt.patch_size))
-        constraint_ = constraint * mask_ #* mask_source
-        
-        #test eye
-        mask_source = torch.ones_like(mask_source)
-
-        #ocean
-        opt.eye_diam=4
-        opt.eye_loc = (38, 78) #TODO ocean
-        mask_source[:,0,:,:]  = (241/255 - 0.485)/0.229
-        mask_source[:,1,:,:]  = (238/255 - 0.456)/0.224
-        mask_source[:,2,:,:]  = (240/255 - 0.406)/0.225
-
-        #tetra_fish
-        # opt.eye_diam = 4
-        # opt.eye_loc = (40, 75) #TODO 
-        # mask_source[:,0,:,:]  = (148/255 - 0.5)*2
-        # mask_source[:,1,:,:]  = (151/255 - 0.5)*2
-        # mask_source[:,2,:,:]  = (124/255 - 0.5)*2
-
-        #blackbird
-        # opt.eye_diam = 4
-        # opt.eye_loc = (28, 43) #TODO 
-        # mask_source[:,0,:,:]  = (255/255 - 0.5)*2
-        # mask_source[:,1,:,:]  = (231/255 - 0.5)*2
-        # mask_source[:,2,:,:]  = (184/255 - 0.5)*2
-
-        # rabbit
-        # opt.eye_diam = 4
-        # opt.eye_loc = (60, 43) #TODO 
-        # mask_source[:,0,:,:]  = (168/255 - 0.5)*2
-        # mask_source[:,1,:,:]  = (176/255 - 0.5)*2
-        # mask_source[:,2,:,:]  = (155/255 - 0.5)*2
-
-        
-        constraint_ = functions.generate_eye_mask(opt, mask_, 0)
+       # Loading image source for mask and resizing so that biggest dimension is opt.patch_size 
+        new_dim = (mask.size()[3], mask.size()[2])
+        mask_source = functions.read_image(opt, "Input/mask_sources", opt.mask_name[:-3]+"jpg", size=new_dim)
         
         
-        # _, _, constraint_ind, mask_ind, _= functions.gen_fake(real, real, mask_.to(real), constraint_.to(real), mask_source.to(real), opt)
-         
-
-        # mask_without_eye = mask_ind * (1-constraint_ind)
-
-
-        size = (256, 256)
+        constraint_ = functions.generate_eye_mask(opt, mask, 0)
+        constraint = constraint_ * mask #* mask_source
+        
+        
+        height, width = real.shape[2], real.shape[3]
+        scale = 256/min(height, width)
+        size = (int(height*scale), int(width*scale))
+  
+        
         img_transform = transforms.Compose(
-            [transforms.Resize(size=size), transforms.ToTensor(),
+            [   transforms.Resize(size),
+                transforms.ToTensor(),
             transforms.Normalize(mean=MEAN, std=STD)])
         mask_transform = transforms.Compose(
-            [ transforms.Resize(size=(96, 96), interpolation=1),transforms.ToTensor()])
+            [ transforms.Resize(size=(mask.shape[2], mask.shape[3]), interpolation=1),transforms.ToTensor()])
         
        
 
@@ -131,51 +101,78 @@ if __name__ == '__main__':
         model.eval()
 
 
-        real = Image.open("Input\Images\\181109-ocean-floor-acidity-sea-cs-327p_0c8e6758c89086c7dc520f4a8445fc08.jpg")
+        real = Image.open("Input\Images\\" + opt.input_name)
         real_ = img_transform(real).unsqueeze(0).to(opt.device)
+        
+
+        real_cropped = real_[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]
 
         
-        mask = Image.open("Input\masks\\bird-20.gif")
+        
+        mask = Image.open("Input\\body_masks\\" + opt.mask_name)
         mask_ = mask_transform(mask).unsqueeze(0).to(opt.device)
-        
-        
+      
         for i in range(20):
         
-            _, _, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real_, real_, mask_[:,0:1,:,:], constraint_, mask_source, opt)
-            mask = 1 - mask_ind * (1-constraint_ind)
-            # mask = mask.repeat(1,3,1,1)
-            real = real_*(1-constraint_ind).to(opt.device) + (constraint_filled).to(opt.device)
-            # real = real_
-            # model.eval()
+            _, _, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real_cropped, real_cropped, mask_[:,0:1,:,:], constraint_, mask_source, opt)
+            mask = 1 - mask_ind #* (1-constraint_ind)
+            mask = mask.repeat(1,3,1,1)
+            real = real_cropped#*(1-constraint_ind).to(opt.device) + (constraint_ind).to(opt.device)
+
             with torch.no_grad():
                 out, out_mask = model(real*mask.to(opt.device), mask.to(opt.device))
         
+            output_comp = (1 - mask.to(opt.device)) * out.to(opt.device) + ((mask-constraint_ind).to(opt.device) * real).to(opt.device) + constraint_filled.to(opt.device)
             
-            output_comp = (1 - mask.to(opt.device)) * out.to(opt.device) + (mask.to(opt.device) * real).to(opt.device)
+            dilated = torch.tensor(scipy.ndimage.morphology.binary_dilation(mask_ind,iterations=1)).to(mask_ind)
+            border = (dilated-mask_ind).to(opt.device).round()
+            border_colored= torch.zeros_like(real)
+            border_colored[:,0:1,:,:] = border*255 
+            border_colored[:,1:,:,:] = -border*255 
+            border_ind = output_comp * (1-border) +border_colored
             
-            output_comp = output_comp.transpose(1, 3)
-            output_comp = output_comp * torch.tensor(STD).to(opt.device) + torch.tensor(MEAN).to(opt.device)
-            output_comp = output_comp.transpose(1, 3)
-            output_comp = torch.nn.functional.interpolate(output_comp, size=(188, 250))
             
-            # out = out.transpose(1, 3)
-            # out= out * torch.tensor(STD).to(opt.device) + torch.tensor(MEAN).to(opt.device)
-            # out = out.transpose(1, 3)
+            
+            output_full = real_.clone()
+            border_ind_full =  real_.clone()
+            mask_ind_full = torch.zeros_like(real_)
+            output_full[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]  =output_comp
+            border_ind_full[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]  =border_ind
+            mask_ind_full[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]  =mask_ind
+            
+            
+            def post(image):
+                image = image.transpose(1, 3)
+                image = image * torch.tensor(STD).to(opt.device) + torch.tensor(MEAN).to(opt.device)
+                image = image.transpose(1, 3)
+                image = torch.nn.functional.interpolate(image, size=orig_size, mode='nearest')
+                return image
+        
+            output_full = post(output_full)
+            mask_ind_full = torch.nn.functional.interpolate(mask_ind_full, size=orig_size, mode='nearest')
+            border_ind_full= post(border_ind_full)
+           
+            
+           
+
             
             dir2save = '%s/RandomSamples/%s/NVIDIA/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
             
             try:
                 os.makedirs(dir2save + "/fake")
+                os.makedirs(dir2save + "/border_ind")
                 # os.makedirs(dir2save + "/background")
                 # os.makedirs(dir2save + "/mask")
                 # os.makedirs(dir2save + "/constraint")
-                # os.makedirs(dir2save + "/mask_ind")
+                os.makedirs(dir2save + "/mask_ind")
 
             except OSError:
                 pass
 
 
-            save_image(output_comp, '%s/%s/%d.png' % (dir2save, "fake", i))
+            save_image(output_full, '%s/%s/%d.png' % (dir2save, "fake", i))
+            save_image(border_ind_full, '%s/%s/%d.png' % (dir2save, "border_ind", i))
+            save_image(mask_ind_full, '%s/%s/%d.png' % (dir2save, "mask_ind", i))
             # plt.imsave('%s/%s/%d.png' % (dir2save, "fake", i), functions.convert_image_np(I_curr.detach()), vmin=0,vmax=1)
             # plt.imsave('%s/%s/%d.png' % (dir2save, "background", i), np.asarray(opt_img_), vmin=0,vmax=1)
             # plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind.detach()), vmin=0,vmax=1)

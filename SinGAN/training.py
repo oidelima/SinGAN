@@ -25,6 +25,16 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     # Loading input background image, normalizing and resizing to largest scale size
     real = functions.read_image(opt)
     real = imresize(real,opt.scale1,opt)
+    # print(real.shape)
+    # from PIL import Image, ImageDraw
+    # eye = Image.new('RGB', (real.shape[3], real.shape[2]))
+    # draw = ImageDraw.Draw(eye)
+    # eye_loc = (real.shape[2]//2 - 1, real.shape[3]//2 - 1)
+    # draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + 3, eye_loc[0] + 3)], fill="white")
+    # eye = np.array(eye)/255.0
+    # print(eye.shape)
+    # plt.imsave("center_reference.png" , eye)
+    # functions.show_image(eye)
     
     # Loading masks and resizing so that biggest dimension is opt.patch_size 
     mask = functions.read_mask(opt,"Input/body_masks",opt.mask_name) 
@@ -396,7 +406,8 @@ def train_style(opt):
                             transforms.Lambda(lambda x: x.mul_(255)),
                             ])
     
-    prep_mask_source = transforms.Compose([transforms.Resize(opt.patch_size),
+    prep_mask_source = transforms.Compose([
+                            
                             transforms.ToTensor(),
                             transforms.Lambda(lambda x: x[torch.LongTensor([2,1,0])]), #turn to BGR
                             transforms.Normalize(mean=[0.40760392, 0.45795686, 0.48501961], #subtract imagenet mean
@@ -431,59 +442,29 @@ def train_style(opt):
     # real = imresize(real_,opt.scale1,opt)
     real = prep(Image.open('%s/%s' % (opt.input_dir,opt.input_name)))
     real = Variable(real.unsqueeze(0).cuda())
-    mask = functions.read_mask(opt)
+    
+
+  
+    
+
+    # Loading masks and resizing so that biggest dimension is opt.patch_size 
+    mask = functions.read_mask(opt,"Input/body_masks",opt.mask_name) 
+    
+     # Loading image source for mask and resizing so that biggest dimension is opt.patch_size 
+    new_dim = (mask.size()[2], mask.size()[3])
     mask_source = Image.open('%s/%s' % ("Input/mask_sources",opt.mask_source))
+    mask_source = transforms.Resize(new_dim)(mask_source)
     mask_source = prep_mask_source(mask_source)
     mask_source = mask_source.unsqueeze(0).cuda()
-    constraint = functions.read_mask(opt, "Input/custom_constraints", opt.mask_name) 
-    constraint = constraint * mask #* mask_source
-    # test_noise = torch.rand_like(real)  - torch.tensor([[-0.40760392, -0.45795686, -0.48501961]]).unsqueeze(-1).unsqueeze(-1).cuda()
-    # test_noise *= 255
+   
+   
     opt_img = Variable(real.data.clone(), requires_grad=True)
 
+
+    constraint_ = functions.generate_eye_mask(opt, mask, 0)
+    # real = torch.ones_like(real)
+    constraint = constraint_.to(mask_source) 
     
-    #test eye
-    mask_source = torch.ones_like(mask_source)
-
-    #ocean
-    opt.eye_diam=4
-    opt.eye_loc = (38, 78) #TODO ocean 
-    mask_source[:,0,:,:]  = 241 + 0.40760392
-    mask_source[:,1,:,:]  = 238 + 0.45795686
-    mask_source[:,2,:,:]  = 240 + 0.48501961
-
-    #tetra_fish
-    # opt.eye_diam = 4
-    # opt.eye_loc = (40, 75) #TODO 
-    # mask_source[:,0,:,:]  = (148/255 - 0.5)*2
-    # mask_source[:,1,:,:]  = (151/255 - 0.5)*2
-    # mask_source[:,2,:,:]  = (124/255 - 0.5)*2
-
-    #blackbird
-    # opt.eye_diam = 4
-    # opt.eye_loc = (28, 43) #TODO 
-    # mask_source[:,0,:,:]  = (255/255 - 0.5)*2
-    # mask_source[:,1,:,:]  = (231/255 - 0.5)*2
-    # mask_source[:,2,:,:]  = (184/255 - 0.5)*2
-
-    # rabbit
-    # opt.eye_diam = 4
-    # opt.eye_loc = (60, 43) #TODO 
-    # mask_source[:,0,:,:]  = (168/255 - 0.5)*2
-    # mask_source[:,1,:,:]  = (176/255 - 0.5)*2
-    # mask_source[:,2,:,:]  = (155/255 - 0.5)*2
-
-    
-    constraint = functions.generate_eye_mask(opt, mask, 0)
-
-
-    
-    # z_curr,in_s,G_curr = train_single_scale(D_curr,G_curr,reals,masks,constraints, mask_sources, crop_sizes, Gs,Zs,in_s,NoiseAmp,opt)
-
-
-    # G_curr = functions.reset_grads(G_curr,False)
-    # G_curr.eval()
-
     style_layers = ['r11','r21','r31','r41', 'r51'] 
     loss_layers = style_layers
     loss_fns = [models.GramMSELoss()] * len(style_layers)
@@ -499,7 +480,7 @@ def train_style(opt):
     targets = style_targets
 
     #run style transfer
-    max_iter = 500
+    max_iter = 10
     show_iter = 50
     # optimizer = torch.optim.Adam(vgg.parameters(), lr=opt.lr_g, betas=(opt.beta1, 0.999))
     optimizer = optim.LBFGS([opt_img]);
@@ -511,11 +492,10 @@ def train_style(opt):
 
         def closure():
             optimizer.zero_grad()
-            fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, opt_img, mask, constraint, mask_source, opt)
-            # plt.imshow(fake.cpu().squeeze().permute(1,2,0).detach())
-        
+            fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, opt_img, mask, constraint, mask_source, opt, no_constraint=True)
+
             # plt.imshow(postp(fake.data[0].cpu().squeeze()))
-            # plt.imshow((real/255).cpu().squeeze().permute(1,2,0).detach())
+            # # plt.imshow((real/255).cpu().squeeze().permute(1,2,0).detach())
             # plt.show()
             out = vgg(fake, loss_layers)
             layer_losses = [weights[a] * loss_fns[a](A, targets[a]) for a,A in enumerate(out)]
@@ -532,7 +512,9 @@ def train_style(opt):
         
     #display result
     # out_img = postp(opt_img.data[0].cpu().squeeze())
+    # Making indicator for where the shape is for MTURK users
     
+
     dir2save = '%s/RandomSamples/%s/style/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
     try:
         os.makedirs(dir2save + "/fake")
@@ -540,21 +522,34 @@ def train_style(opt):
         os.makedirs(dir2save + "/mask")
         os.makedirs(dir2save + "/constraint")
         os.makedirs(dir2save + "/mask_ind")
+        os.makedirs(dir2save + "/border_ind")
 
     except OSError:
         pass
 
     for i in range(20):
+        
         fake, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, opt_img, mask, constraint, mask_source, opt)
+        dilated = torch.tensor(scipy.ndimage.morphology.binary_dilation(mask_ind,iterations=1)).to(mask_ind)
+        border = (dilated-mask_ind).to(opt.device).round()*1
+        border_colored= torch.zeros_like(fake)
+        border_colored[:,-1:,:,:] = border*255 
+        border_colored[:,:-1,:,:] = -border*255 
+        border_ind = fake * (1-border) +border_colored
+        
         fake = postp(fake.data[0].cpu().squeeze())
         real_ = postp(real.data[0].cpu().squeeze())
+        border_ind = postp(border_ind.data[0].cpu().squeeze())
+        # constraint_filled = postp(constraint_filled.data[0].cpu().squeeze())
+     
+        
         opt_img_ = postp(opt_img.data[0].cpu().squeeze())
         plt.imsave('%s/%s/%d.png' % (dir2save, "fake", i),  np.asarray(fake), vmin=0,vmax=1)
         # plt.imsave('%s/%s/%d.png' % (dir2save, "fake", i), functions.convert_image_np(I_curr.detach()), vmin=0,vmax=1)
         plt.imsave('%s/%s/%d.png' % (dir2save, "background", i), np.asarray(opt_img_), vmin=0,vmax=1)
-        plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind.detach()), vmin=0,vmax=1)
+        # plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), np.asarray(constraint_filled), vmin=0,vmax=1)
         plt.imsave('%s/%s/%d.png' % (dir2save, "mask_ind", i), functions.convert_image_np(mask_ind.detach()),  cmap="gray")
-        plt.imsave('%s/%s/%d.png' % (dir2save, "constraint", i), functions.convert_image_np(constraint_filled.detach()), vmin=0,vmax=1)
+        plt.imsave('%s/%s/%d.png' % (dir2save, "border_ind", i), np.asarray(border_ind))
 
 
         
