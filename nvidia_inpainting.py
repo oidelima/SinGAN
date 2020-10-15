@@ -15,7 +15,6 @@ if __name__ == '__main__':
     parser.add_argument('--input_name', help='input image name', required=True)
     parser.add_argument('--mask_dir', help='input mask dir', default='Input/masks')
     parser.add_argument('--mask_name', help='input mask name', required=True)
-    parser.add_argument('--mask_source', help='input mask source name', required=True)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--patch_size', type=int, default=96)
     parser.add_argument('--crop_size', type=int, default=250)
@@ -92,7 +91,7 @@ if __name__ == '__main__':
                 transforms.ToTensor(),
             transforms.Normalize(mean=MEAN, std=STD)])
         mask_transform = transforms.Compose(
-            [ transforms.Resize(size=(mask.shape[2], mask.shape[3]), interpolation=1),transforms.ToTensor()])
+            [ transforms.Resize(size=(mask.shape[2], mask.shape[3]), interpolation=0),transforms.ToTensor()])
         
        
 
@@ -101,15 +100,14 @@ if __name__ == '__main__':
         model.eval()
 
 
-        real = Image.open("Input\Images\\" + opt.input_name)
+        real = Image.open("Input/Images/" + opt.input_name)
         real_ = img_transform(real).unsqueeze(0).to(opt.device)
         
-
-        real_cropped = real_[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]
+        real_cropped = real_[:,:,int(size[0]//2) - 128:int(size[0]//2) + 128, int(size[1]//2) - 128: int(size[1]//2) + 128]
 
         
         
-        mask = Image.open("Input\\body_masks\\" + opt.mask_name)
+        mask = Image.open("Input/body_masks/" + opt.mask_name)
         mask_ = mask_transform(mask).unsqueeze(0).to(opt.device)
       
         for i in range(20):
@@ -121,8 +119,8 @@ if __name__ == '__main__':
 
             with torch.no_grad():
                 out, out_mask = model(real*mask.to(opt.device), mask.to(opt.device))
-        
-            output_comp = (1 - mask.to(opt.device)) * out.to(opt.device) + ((mask-constraint_ind).to(opt.device) * real).to(opt.device) + constraint_filled.to(opt.device)
+                
+            output_comp = ((1 - mask.to(opt.device))-constraint_ind.to(opt.device)) * out.to(opt.device) + ((mask).to(opt.device) * real).to(opt.device) + constraint_filled.to(opt.device)
             
             
             
@@ -131,15 +129,15 @@ if __name__ == '__main__':
             output_full = real_.clone()
             border_ind_full =  real_.clone()
             mask_ind_full = torch.zeros_like(real_)
-            output_full[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]  =output_comp
-            mask_ind_full[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]  =mask_ind
+            output_full[:,:,int(size[0]//2) - 128:int(size[0]//2) + 128, int(size[1]//2) - 128: int(size[1]//2) + 128]  =output_comp
+            mask_ind_full[:,:,int(size[0]//2) - 128:int(size[0]//2) + 128, int(size[1]//2) - 128: int(size[1]//2) + 128]  =mask_ind
             
             
             def post(image):
                 image = image.transpose(1, 3)
                 image = image * torch.tensor(STD).to(opt.device) + torch.tensor(MEAN).to(opt.device)
                 image = image.transpose(1, 3)
-                image = torch.nn.functional.interpolate(image, size=orig_size, mode='nearest')
+                image = torch.nn.functional.interpolate(image, size=orig_size, mode='bilinear')
                 return image
         
             output_full = post(output_full)

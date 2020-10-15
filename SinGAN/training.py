@@ -452,7 +452,7 @@ def train_style(opt):
     
      # Loading image source for mask and resizing so that biggest dimension is opt.patch_size 
     new_dim = (mask.size()[2], mask.size()[3])
-    mask_source = Image.open('%s/%s' % ("Input/mask_sources",opt.mask_source))
+    mask_source = Image.open('%s/%s' % ("Input/mask_sources",opt.mask_name[:-3]+"jpg"))
     mask_source = transforms.Resize(new_dim)(mask_source)
     mask_source = prep_mask_source(mask_source)
     mask_source = mask_source.unsqueeze(0).cuda()
@@ -480,7 +480,7 @@ def train_style(opt):
     targets = style_targets
 
     #run style transfer
-    max_iter = 10
+    max_iter = 500
     show_iter = 50
     # optimizer = torch.optim.Adam(vgg.parameters(), lr=opt.lr_g, betas=(opt.beta1, 0.999))
     optimizer = optim.LBFGS([opt_img]);

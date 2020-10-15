@@ -13,7 +13,6 @@ if __name__ == '__main__':
     parser.add_argument('--input_name', help='input image name', required=True)
     parser.add_argument('--mask_dir', help='input mask dir', default='Input/masks')
     parser.add_argument('--mask_name', help='input mask name', required=True)
-    parser.add_argument('--mask_source', help='input mask source name', required=True)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--patch_size', type=int, default=96)
     parser.add_argument('--crop_size', type=int, default=250)
