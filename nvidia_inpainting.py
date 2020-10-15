@@ -124,12 +124,7 @@ if __name__ == '__main__':
         
             output_comp = (1 - mask.to(opt.device)) * out.to(opt.device) + ((mask-constraint_ind).to(opt.device) * real).to(opt.device) + constraint_filled.to(opt.device)
             
-            dilated = torch.tensor(scipy.ndimage.morphology.binary_dilation(mask_ind,iterations=1)).to(mask_ind)
-            border = (dilated-mask_ind).to(opt.device).round()
-            border_colored= torch.zeros_like(real)
-            border_colored[:,0:1,:,:] = border*255 
-            border_colored[:,1:,:,:] = -border*255 
-            border_ind = output_comp * (1-border) +border_colored
+            
             
             
             
@@ -137,7 +132,6 @@ if __name__ == '__main__':
             border_ind_full =  real_.clone()
             mask_ind_full = torch.zeros_like(real_)
             output_full[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]  =output_comp
-            border_ind_full[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]  =border_ind
             mask_ind_full[:,:,int((size[0] - 256)/2):int((size[0] + 257)/2), int((size[1] - 256)/2): int((size[1] + 257)/2)]  =mask_ind
             
             
@@ -150,7 +144,19 @@ if __name__ == '__main__':
         
             output_full = post(output_full)
             mask_ind_full = torch.nn.functional.interpolate(mask_ind_full, size=orig_size, mode='nearest')
-            border_ind_full= post(border_ind_full)
+
+      
+            dilated = torch.tensor(scipy.ndimage.morphology.binary_dilation(np.asarray(mask_ind_full.cpu()),iterations=1)).to(mask_ind_full)
+            border = (dilated-mask_ind_full).to(opt.device).round()[:,0:1,:,:]
+        
+            
+            border_colored= torch.zeros([1,3,orig_size[0], orig_size[1]]).to(opt.device)
+            border_colored[:,0:1,:,:] = border*255 
+            border_colored[:,1:,:,:] = -border*255 
+            border_ind_full = output_full* (1-border) +border_colored
+            
+            
+            
            
             
            

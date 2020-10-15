@@ -87,26 +87,24 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     imageio.mimsave('%s/start_scale=%d/alpha=%f_beta=%f.gif' % (dir2save,start_scale,alpha,beta),images_cur,fps=fps)
     del images_cur
 
-def random_crop_generate(real, mask, constraint, mask_source, crop_size, opt, num_samples = 20):
+def random_crop_generate(real, mask, constraint, mask_source, opt, num_samples = 20):
     
     real_fullsize = real.clone()
 
     for i in range(num_samples):
-        
-        if opt.random_crop:
-            fake_background, _, _ = functions.random_crop(real_fullsize, crop_size, opt)
-            real, h_idx, w_idx = functions.random_crop(real_fullsize.clone(), crop_size, opt)
-        else:
-            real = real_fullsize.clone()
-            fake_background = real_fullsize.clone()
+      
+        real = real_fullsize.clone()
+        fake_background = real_fullsize.clone()
 
         I_curr, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
 
-        if opt.random_crop:
-            full_fake = real_fullsize.clone()
-            full_fake[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = I_curr[0:1, :, :, :]
-            full_mask = torch.zeros_like(full_fake)
-            full_mask[:, :, h_idx:h_idx+crop_size, w_idx:w_idx+crop_size] = fake_ind[0:1, : ,:, :]
+        #Making indicator for where the shape is for MTURK users
+        dilated = torch.tensor(scipy.ndimage.morphology.binary_dilation(mask_ind,iterations=1)).to(mask_ind)
+        border = (dilated-mask_ind).to(opt.device).round()
+        border_colored= torch.zeros_like(I_curr)
+        border_colored[:,0:1,:,:] = border 
+        border_colored[:,1:,:,:] = -border 
+        border_ind = I_curr * (1-border)  +border_colored
         
         dir2save = '%s/RandomSamples/%s/random_crop/%s' % (opt.out, opt.input_name[:-4], opt.run_name)
         try:
@@ -116,9 +114,8 @@ def random_crop_generate(real, mask, constraint, mask_source, crop_size, opt, nu
             os.makedirs(dir2save + "/constraint")
             os.makedirs(dir2save + "/prev")
             os.makedirs(dir2save + "/mask_ind")
-            if opt.random_crop:
-                os.makedirs(dir2save + "/full_fake")
-                os.makedirs(dir2save + "/full_mask") 
+            os.makedirs(dir2save + "/border_ind")
+
         except OSError:
             pass
         if (opt.mode != "harmonization") & (opt.mode != "editing") & (opt.mode != "SR") & (opt.mode != "paint2image"):
@@ -127,11 +124,8 @@ def random_crop_generate(real, mask, constraint, mask_source, crop_size, opt, nu
             plt.imsave('%s/%s/%d.png' % (dir2save, "mask", i), functions.convert_image_np(fake_ind.detach()), vmin=0,vmax=1)
             plt.imsave('%s/%s/%d.png' % (dir2save, "mask_ind", i), functions.convert_image_np(mask_ind.detach()),  cmap="gray")
             plt.imsave('%s/%s/%d.png' % (dir2save, "constraint", i), functions.convert_image_np(constraint_filled.detach()), vmin=0,vmax=1)
-            if opt.random_crop:
-                plt.imsave('%s/%s/%d.png' % (dir2save, "full_fake", i), functions.convert_image_np(full_fake.detach()), vmin=0,vmax=1)
-                plt.imsave('%s/%s/%d.png' % (dir2save, "full_mask", i), functions.convert_image_np(full_mask.detach()), vmin=0,vmax=1)
-            #plt.imsave('%s/%d_%d.png' % (dir2save,i,n),functions.convert_image_np(I_curr.detach()), vmin=0, vmax=1)
-            #plt.imsave('%s/in_s.png' % (dir2save), functions.convert_image_np(in_s), vmin=0,vmax=1)
+            plt.imsave('%s/%s/%d.png' % (dir2save, "border_ind", i), functions.convert_image_np(border_ind.detach()))
+
 
 
 def SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=20):
