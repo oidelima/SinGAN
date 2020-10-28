@@ -22,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', help='task to be done', default='style')
     parser.add_argument('--random_crop', action='store_true', help='enables random crop during training')
     parser.add_argument('--batch_size',type=int, default=1)
+    parser.add_argument('--fixed_eye_loc', nargs='+', type=int)
     
 
     opt = parser.parse_args()

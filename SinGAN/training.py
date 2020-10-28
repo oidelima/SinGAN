@@ -59,7 +59,7 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     # mask_source[:,1,:,:]  = (238/255 - 0.5)*2
     # mask_source[:,2,:,:]  = (240/255 - 0.5)*2
     
-    constraint_ = functions.generate_eye_mask(opt, mask, 0)
+    constraint_ = functions.generate_eye_mask(opt, mask, 0, opt.fixed_eye_loc)
     constraint = constraint_ * mask #* mask_source
 
     in_s = 0

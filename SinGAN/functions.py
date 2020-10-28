@@ -195,7 +195,7 @@ def read_mask(opt, mask_dir=None, mask_name=None):
     #x = x.type(torch.FloatTensor)
     return x
 
-def generate_eye_mask(opt, mask, level):
+def generate_eye_mask(opt, mask, level, fixed_eye_loc=None):
     
     scale = math.pow(opt.scale_factor, level)
     
@@ -203,10 +203,16 @@ def generate_eye_mask(opt, mask, level):
     # Make eye constraint mask
     eye_diam = 7
     count = 0
+
+    
     while True:
         eye = Image.new('RGB', (im_width, im_height))
         draw = ImageDraw.Draw(eye)
-        eye_loc = (random.randint(0, im_height-eye_diam), random.randint(0, im_width-eye_diam))
+        
+        if fixed_eye_loc:
+            eye_loc = fixed_eye_loc
+        else:
+            eye_loc = (random.randint(0, im_height-eye_diam), random.randint(0, im_width-eye_diam))
         draw.ellipse([(eye_loc[1], eye_loc[0]), (eye_loc[1] + eye_diam, eye_loc[0] + eye_diam)], fill="white")
         eye = torch.from_numpy(np.array(eye)).permute((2, 0, 1))/255.0
 
@@ -217,9 +223,9 @@ def generate_eye_mask(opt, mask, level):
         
         eye = imresize_mask(eye,scale,opt)
         
-        if eye.sum() == (eye*mask).sum():
+        if eye.sum() == (eye*mask).sum() or fixed_eye_loc:
             break
-    
+  
     return eye
 
         
