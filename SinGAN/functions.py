@@ -239,12 +239,17 @@ def find_valid_eye_location(opt, eye_diam, mask):
         except:
             pass
 
-def gen_fake(real, fake_background, mask, constraint, mask_source, opt, position = None, no_constraint=False):
+def gen_fake(real, fake_background, mask, constraint, mask_source, opt, position = None, no_constraint=False, random_position = False):
        
     im_height, im_width = real.size()[2], real.size()[3] 
     mask_height, mask_width = mask.size()[2], mask.size()[3] 
-    height_init = (im_height - mask_height)//2
-    width_init = (im_width - mask_width)//2
+
+    if not random_position:
+        height_init = (im_height - mask_height)//2
+        width_init = (im_width - mask_width)//2
+    else:
+        height_init =  np.random.randint(im_height - mask_height)
+        width_init = np.random.randint(im_width - mask_width)
 
     
     fake = real.clone()

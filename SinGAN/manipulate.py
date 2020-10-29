@@ -96,7 +96,7 @@ def random_crop_generate(real, mask, constraint, mask_source, opt, num_samples =
         real = real_fullsize.clone()
         fake_background = real_fullsize.clone()
 
-        I_curr, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt)
+        I_curr, fake_ind, constraint_ind, mask_ind, constraint_filled = functions.gen_fake(real, fake_background, mask, constraint, mask_source, opt, random_position=True)
 
         #Making indicator for where the shape is for MTURK users
         dilated = torch.tensor(scipy.ndimage.morphology.binary_dilation(mask_ind,iterations=1)).to(mask_ind)
