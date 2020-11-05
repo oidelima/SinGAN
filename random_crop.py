@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
         # Loading masks and resizing so that biggest dimension is opt.patch_size 
         mask = functions.read_mask(opt,"Input/body_masks",opt.mask_name) 
-        constraint = functions.read_mask(opt, "Input/constraints", opt.mask_name) 
+        # constraint = functions.read_mask(opt, "Input/constraints", opt.mask_name) 
         
         # Loading image source for mask and resizing so that biggest dimension is opt.patch_size 
         new_dim = (mask.size()[3], mask.size()[2])

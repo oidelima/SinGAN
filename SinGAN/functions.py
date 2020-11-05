@@ -225,7 +225,7 @@ def generate_eye_mask(opt, mask, level, fixed_eye_loc=None):
         
         if eye.sum() == (eye*mask).sum() or fixed_eye_loc:
             break
-  
+        
     return eye
 
         

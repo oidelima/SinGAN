@@ -38,7 +38,7 @@ def train(opt,Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAm
     
     # Loading masks and resizing so that biggest dimension is opt.patch_size 
     mask = functions.read_mask(opt,"Input/body_masks",opt.mask_name) 
-    constraint = functions.read_mask(opt, "Input/constraints", opt.mask_name) 
+    # constraint = functions.read_mask(opt, "Input/constraints", opt.mask_name) 
     
      # Loading image source for mask and resizing so that biggest dimension is opt.patch_size 
     new_dim = (mask.size()[3], mask.size()[2])
@@ -461,7 +461,7 @@ def train_style(opt):
     opt_img = Variable(real.data.clone(), requires_grad=True)
 
 
-    constraint_ = functions.generate_eye_mask(opt, mask, 0)
+    constraint_ = functions.generate_eye_mask(opt, mask, 0, opt.fixed_eye_loc)
     # real = torch.ones_like(real)
     constraint = constraint_.to(mask_source) 
     
