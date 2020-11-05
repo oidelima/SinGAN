@@ -77,7 +77,7 @@ tmux send-keys -t "2" "python random_crop.py --input_name ForestFloorDemo.0010-m
 tmux send-keys -t "2" "python random_crop.py --input_name 3380728556_14574fff67_k.jpg --mask_name=fish-2.png --run_name=test --batch_size=1  --patch_size=128 --gpu=0 --alpha=10 --niter=2000 --mode=train --fixed_eye_loc 54 88" Enter
 tmux send-keys -t "2" "python random_crop.py --input_name 1388693307.jpg --mask_name=fish-3.png --run_name=test --batch_size=1  --patch_size=128 --gpu=0 --alpha=10 --niter=2000 --mode=train --fixed_eye_loc 79 56" Enter
 tmux send-keys -t "2" "python random_crop.py --input_name 65533488.jpg --mask_name=fish-4.png --run_name=test --batch_size=1  --patch_size=128 --gpu=0 --alpha=10 --niter=2000 --mode=train --fixed_eye_loc 28 43" Enter
-tmux send-keys -t "2" "python random_crop.py --input_name 247770075.jpg --mask_name=fish.png --run_name=test --batch_size=1  --patch_size=96 --gpu=0 --alpha=10 --niter=2000 --mode=train 20 71" Enter
+tmux send-keys -t "2" "python random_crop.py --input_name 247770075.jpg --mask_name=fish.png --run_name=test --batch_size=1  --patch_size=96 --gpu=0 --alpha=10 --niter=2000 --mode=train --fixed_eye_loc 20 71" Enter
 tmux send-keys -t "2" "python random_crop.py --input_name charlottesville-7-view.jpg --mask_name=frog.png --run_name=test --batch_size=1  --patch_size=96 --gpu=0 --alpha=10 --niter=2000 --mode=train --fixed_eye_loc 37 59" Enter
 tmux send-keys -t "2" "python random_crop.py --input_name walen-log-view1.jpg --mask_name=goat.png --run_name=test --batch_size=1  --patch_size=128 --gpu=0 --alpha=10 --niter=2000 --mode=train --fixed_eye_loc 52 73" Enter
 
