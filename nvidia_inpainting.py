@@ -22,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', help='task to be done', default='train')
     parser.add_argument('--random_crop', action='store_true', help='enables random crop during training')
     parser.add_argument('--batch_size',type=int, default=1)
+    parser.add_argument('--fixed_eye_loc', nargs='+', type=int)
     
     
     
@@ -77,7 +78,7 @@ if __name__ == '__main__':
         mask_source = functions.read_image(opt, "Input/mask_sources", opt.mask_name[:-3]+"jpg", size=new_dim)
         
         
-        constraint_ = functions.generate_eye_mask(opt, mask, 0)
+        constraint_ = functions.generate_eye_mask(opt, mask, 0, opt.fixed_eye_loc)
         constraint = constraint_ * mask #* mask_source
         
         
@@ -87,7 +88,7 @@ if __name__ == '__main__':
   
         
         img_transform = transforms.Compose(
-            [   transforms.Resize(size),
+            [   transforms.Resize(size, interpolation=Image.NEAREST),
                 transforms.ToTensor(),
             transforms.Normalize(mean=MEAN, std=STD)])
         mask_transform = transforms.Compose(
