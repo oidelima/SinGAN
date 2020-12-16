@@ -38,5 +38,10 @@ if __name__ == '__main__':
         # real = functions.read_image(opt)           
         # functions.adjust_scales2image(real, opt)
         # crop_sizes = [math.ceil((opt.crop_size*opt.scale1)*opt.scale_factor**(opt.stop_scale-i)) for i in range(opt.stop_scale + 1)]
+        real = functions.read_image(opt)
+    
+            
+        # functions.show_image(real[0,:,:,:])
+        functions.adjust_scales2image(real, opt)
         train_style(opt)
         # SinGAN_generate(Gs,Zs,reals, masks, constraints, crop_sizes, mask_sources, NoiseAmp,opt, num_samples = opt.num_samples)

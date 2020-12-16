@@ -239,17 +239,21 @@ def find_valid_eye_location(opt, eye_diam, mask):
         except:
             pass
 
-def gen_fake(real, fake_background, mask, constraint, mask_source, opt, position = None, no_constraint=False, random_position = False):
+def gen_fake(real, fake_background, mask, constraint, mask_source, opt, position = None, no_constraint=False, random_position = False, position_background=None):
        
     im_height, im_width = real.size()[2], real.size()[3] 
     mask_height, mask_width = mask.size()[2], mask.size()[3] 
 
-    if not random_position:
-        height_init = (im_height - mask_height)//2
-        width_init = (im_width - mask_width)//2
-    else:
+    if position_background:
+        height_init = position_background[0]
+        width_init = position_background[1]
+    elif random_position:
         height_init =  np.random.randint(im_height - mask_height)
         width_init = np.random.randint(im_width - mask_width)
+    else:
+        height_init = (im_height - mask_height)//2
+        width_init = (im_width - mask_width)//2
+    
 
     
     fake = real.clone()
@@ -478,8 +482,8 @@ def generate_dir2save(opt):
         dir2save = 'TrainedModels/%s/SinGAN/name=%s, scale_factor=%f,alpha=%d' % (opt.input_name[:-4],opt.run_name, opt.scale_factor_init,opt.alpha)
     if opt.mode == "inpainting":
         dir2save = 'TrainedModels/%s/inpainting/name=%s, scale_factor=%f,alpha=%d' % (opt.input_name[:-4],opt.run_name, opt.scale_factor_init,opt.alpha)
-    if opt.mode == "nvidia":
-        dir2save = 'TrainedModels/%s/nvidia/name=%s, scale_factor=%f,alpha=%d' % (opt.input_name[:-4],opt.run_name, opt.scale_factor_init,opt.alpha)
+    if opt.mode == "gen_inpainting":
+        dir2save = 'TrainedModels/%s/gen_inpainting/name=%s, scale_factor=%f,alpha=%d' % (opt.input_name[:-4],opt.run_name, opt.scale_factor_init,opt.alpha)
     elif (opt.mode == 'animation_train') :
         dir2save = 'TrainedModels/%s/scale_factor=%f_noise_padding' % (opt.input_name[:-4], opt.scale_factor_init)
     elif (opt.mode == 'paint_train') :

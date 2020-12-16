@@ -396,8 +396,11 @@ def init_models(opt):
 
 def train_style(opt):
     torch.cuda.set_device(opt.device)
-    
-    img_size = (188, 255)
+    real = functions.read_image(opt)
+    real = imresize(real,opt.scale1,opt)
+  
+    img_size = (real.shape[2], real.shape[3])
+
     prep = transforms.Compose([transforms.Resize(img_size),
                             transforms.ToTensor(),
                             transforms.Lambda(lambda x: x[torch.LongTensor([2,1,0])]), #turn to BGR
